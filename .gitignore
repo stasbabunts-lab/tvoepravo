@@ -1,0 +1,8 @@
+# Секрети та локальні налаштування — ніколи не комітити
+.claude/settings.local.json
+.env
+.dev.vars
+
+# Wrangler / Node
+.wrangler/
+node_modules/

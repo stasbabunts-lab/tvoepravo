@@ -1,0 +1,9 @@
+.claude
+.wrangler
+node_modules
+wrangler.toml
+.assetsignore
+.gitignore
+README.md
+package.json
+package-lock.json

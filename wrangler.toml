@@ -1,0 +1,12 @@
+name = "tvoepravo"
+compatibility_date = "2024-11-01"
+workers_dev = true
+
+routes = [
+  { pattern = "tvoepravo.org.ua/*", zone_name = "tvoepravo.org.ua" },
+  { pattern = "www.tvoepravo.org.ua/*", zone_name = "tvoepravo.org.ua" },
+]
+
+# Статичний сайт без збірки: віддаємо файли з кореня як assets-only Worker.
+[assets]
+directory = "."
