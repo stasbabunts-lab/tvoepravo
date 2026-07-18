@@ -5,5 +5,8 @@ wrangler.toml
 .assetsignore
 .gitignore
 README.md
+ARCHIVE_SETUP.md
+schema.sql
+src
 package.json
 package-lock.json

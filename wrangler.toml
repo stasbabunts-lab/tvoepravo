@@ -1,4 +1,5 @@
 name = "tvoepravo"
+main = "src/worker.js"
 compatibility_date = "2024-11-01"
 workers_dev = true
 
@@ -7,6 +8,20 @@ routes = [
   { pattern = "www.tvoepravo.org.ua/*", zone_name = "tvoepravo.org.ua" },
 ]
 
-# Статичний сайт без збірки: віддаємо файли з кореня як assets-only Worker.
+# Статичний сайт + Worker: файли з кореня віддаються як assets,
+# Worker (src/worker.js) обробляє /api/* і робить fallback на assets.
 [assets]
 directory = "."
+binding = "ASSETS"
+
+# База архіву. database_id підставити після `wrangler d1 create tvoepravo_archive`.
+[[d1_databases]]
+binding = "DB"
+database_name = "tvoepravo_archive"
+database_id = "REPLACE_WITH_D1_ID"
+
+[vars]
+# Сіль для хешування IP у submissions (не секрет, але зроби унікальною).
+IP_SALT = "tvoepravo-archive"
+# TURNSTILE_SECRET задається окремо:  npx wrangler secret put TURNSTILE_SECRET
+# ALLOW_INSECURE_MOD не став у проді — модерація має бути лише за Cloudflare Access.

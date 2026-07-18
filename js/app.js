@@ -354,6 +354,7 @@
   // ---------- Роутер ----------
   function render() {
     const hash = location.hash || "#/";
+    if (hash.startsWith("#/archive") && window.ARCHIVE) { window.ARCHIVE.render(hash); return; }
     const m = hash.match(/^#\/s\/([\w-]+)/);
     if (m) {
       const sit = SITUATIONS.find((s) => s.id === m[1]);
