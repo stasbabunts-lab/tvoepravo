@@ -1,9 +1,11 @@
+.git
 .claude
 .wrangler
 node_modules
 wrangler.toml
 .assetsignore
 .gitignore
+CLAUDE.md
 README.md
 ARCHIVE_SETUP.md
 schema.sql

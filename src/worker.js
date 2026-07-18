@@ -18,6 +18,10 @@ export default {
     const url = new URL(request.url);
     const p = url.pathname;
     try {
+      // База ще не підключена (деплой без D1): статика працює, API чесно каже 503.
+      if (p.startsWith("/api/") && !env.DB) {
+        return json({ error: "backend_not_configured", message: "Приймання свідчень ще не активовано." }, 503);
+      }
       if (p === "/api/submit" && request.method === "POST") return await handleSubmit(request, env);
       if (p === "/api/cases" && request.method === "GET") return await handleCases(env);
       if (p.startsWith("/api/mod/")) return await handleMod(request, env, p);
