@@ -107,7 +107,7 @@
 
       <div class="arc-hero">
         <span class="arc-kicker">${icon("i-books")} Публічний архів свідчень</span>
-        <h1>Архів злочинів ТЦК і політичних справ</h1>
+        <h1>Архів злочинів ТЦК</h1>
         <p class="arc-lead">${esc(ARC_DISCLAIMERS.purpose)}</p>
         <div class="arc-hero-actions">
           <a class="arc-btn primary" href="#/archive/add">${icon("i-siren")} Додати випадок</a>
@@ -135,7 +135,7 @@
           <input id="arc-q" type="search" placeholder="Пошук: місто, тип, опис…" autocomplete="off">
         </div>
         <div class="arc-filters">
-          <select id="arc-f-cat"><option value="">Усі категорії</option>${ARC_CATEGORIES.map((c) => `<option value="${c.id}">${esc(c.label)}</option>`).join("")}</select>
+          <select id="arc-f-type"><option value="">Усі типи</option>${(ARC_TYPES.tck || []).map((t) => `<option value="${t.id}">${esc(t.label)}</option>`).join("")}</select>
           <select id="arc-f-obl"><option value="">Усі області</option>${ARC_OBLASTS.map((o) => `<option value="${esc(o)}">${esc(o)}</option>`).join("")}</select>
         </div>
         <div id="arc-list" class="arc-list"></div>
@@ -158,14 +158,14 @@
 
   function bindBrowse(root) {
     const q = root.querySelector("#arc-q");
-    const fc = root.querySelector("#arc-f-cat");
+    const ft = root.querySelector("#arc-f-type");
     const fo = root.querySelector("#arc-f-obl");
     const list = root.querySelector("#arc-list");
     if (!list) return;
 
     function run() {
-      const filters = { q: q.value.trim().toLowerCase(), category: fc.value, oblast: fo.value };
-      const any = q.value || fc.value || fo.value;
+      const filters = { q: q.value.trim().toLowerCase(), type: ft.value, oblast: fo.value };
+      const any = q.value || ft.value || fo.value;
       let items = any ? searchCases(filters) : ARC_CASES.slice();
       // приклади показуємо лише коли немає реальних або без фільтрів
       if (any) items = items.filter((c) => !c.example);
@@ -173,7 +173,7 @@
         ? items.map(caseRow).join("")
         : `<p class="arc-empty">${icon("i-info")} Нічого не знайдено. Якщо ви свідок такого випадку — <a href="#/archive/add">додайте його</a>.</p>`;
     }
-    [q, fc, fo].forEach((el) => el && el.addEventListener("input", run));
+    [q, ft, fo].forEach((el) => el && el.addEventListener("input", run));
     run();
     root._arcRerun = run; // для повторного показу після гідратації
   }
@@ -253,14 +253,11 @@
       <form id="arc-form" class="arc-form" novalidate>
         <fieldset class="arc-fs">
           <legend>1. Що і де сталося</legend>
-          <label>Категорія
-            <select name="category" required>
-              <option value="">— оберіть —</option>
-              ${ARC_CATEGORIES.map((c) => `<option value="${c.id}">${esc(c.label)}</option>`).join("")}
-            </select>
-          </label>
           <label>Тип випадку
-            <select name="type" required disabled><option value="">— спершу оберіть категорію —</option></select>
+            <select name="type" required>
+              <option value="">— оберіть —</option>
+              ${(ARC_TYPES.tck || []).map((t) => `<option value="${t.id}">${esc(t.label)}</option>`).join("")}
+            </select>
           </label>
           <div class="arc-two">
             <label>Область
@@ -342,7 +339,7 @@
   function bindAdd(root) {
     const form = root.querySelector("#arc-form");
     if (!form) return;
-    const catSel = form.category;
+    const CATEGORY = "tck"; // архів наразі лише про злочини ТЦК
     const typeSel = form.type;
     const urlInp = form.url;
     const urlInfo = root.querySelector("#arc-url-info");
@@ -350,14 +347,6 @@
     const dupes = root.querySelector("#arc-dupes");
     const msg = root.querySelector("#arc-form-msg");
     let lastCanonical = null;
-
-    // Тип залежить від категорії
-    catSel.addEventListener("change", () => {
-      const types = ARC_TYPES[catSel.value] || [];
-      typeSel.disabled = !types.length;
-      typeSel.innerHTML = `<option value="">— оберіть —</option>` + types.map((t) => `<option value="${t.id}">${esc(t.label)}</option>`).join("");
-      runDupeCheck();
-    });
 
     // Розбір посилання + архівні кнопки + перевірка дублів по canonicalId
     urlInp.addEventListener("input", () => {
@@ -377,11 +366,11 @@
       runDupeCheck();
     });
 
-    [catSel, typeSel, form.oblast].forEach((el) => el.addEventListener("change", runDupeCheck));
+    [typeSel, form.oblast].forEach((el) => el.addEventListener("change", runDupeCheck));
 
     function runDupeCheck() {
       const found = searchCases({
-        category: catSel.value, type: typeSel.value,
+        category: CATEGORY, type: typeSel.value,
         oblast: form.oblast.value, canonical: lastCanonical
       }).filter((c) => !c.example);
       if (!found.length) { dupes.hidden = true; dupes.innerHTML = ""; return; }
@@ -406,8 +395,8 @@
       if (!fd.get("c_true") || !fd.get("c_pub") || !fd.get("c_pres")) {
         return showMsg("Позначте всі три підтвердження внизу форми.", "err");
       }
-      if (!fd.get("category") || !fd.get("type") || !fd.get("oblast") || !String(fd.get("summary")).trim()) {
-        return showMsg("Заповніть обов'язкові поля: категорія, тип, область, опис.", "err");
+      if (!fd.get("type") || !fd.get("oblast") || !String(fd.get("summary")).trim()) {
+        return showMsg("Заповніть обов'язкові поля: тип, область, опис.", "err");
       }
 
       const urlVal = String(fd.get("url") || "").trim();
@@ -415,7 +404,7 @@
       const hash = urlVal ? await sha256(parsed?.canonical || urlVal) : null;
 
       const payload = {
-        category: fd.get("category"),
+        category: CATEGORY,
         type: fd.get("type"),
         oblast: fd.get("oblast"),
         city: String(fd.get("city") || "").trim(),

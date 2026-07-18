@@ -8,7 +8,7 @@
 -- Інциденти (події «who did what to whom»).
 CREATE TABLE IF NOT EXISTS incidents (
   id           TEXT PRIMARY KEY,            -- uuid
-  category     TEXT NOT NULL,               -- tck | political
+  category     TEXT NOT NULL,               -- наразі лише 'tck'
   type         TEXT NOT NULL,               -- код типу з ARC_TYPES
   oblast       TEXT NOT NULL,
   city         TEXT,
