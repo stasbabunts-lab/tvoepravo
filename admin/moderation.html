@@ -27,6 +27,10 @@
   input.merge { border:1px solid var(--border); border-radius:8px; padding:7px 10px; width:150px; }
   .empty, .msg { color:var(--muted); padding:20px 0; }
   .badge { font-size:11px; background:var(--warn); color:#fff; border-radius:4px; padding:1px 6px; }
+  details { margin-top:6px; }
+  details summary { cursor:pointer; color:var(--accent); font-size:12.5px; }
+  details pre { white-space:pre-wrap; word-break:break-all; font-size:12px; background:var(--bg); padding:8px 10px; border-radius:6px; margin:6px 0 0; }
+  .nolinks { color:var(--warn); }
 </style>
 </head>
 <body>
@@ -40,7 +44,23 @@
 </main>
 <script>
 const esc = (s) => String(s==null?"":s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");
-const TYPE = {}; // код→опис не тягнемо; показуємо коди
+// Розшифровки кодів (дзеркало js/archive-data.js — тримати синхронно).
+const TYPE = {
+  "unlawful-detention":"Незаконне затримання / «пакування» в авто",
+  "violence":"Фізичне насильство, побиття",
+  "forced-delivery":"Примусове доставлення до ТЦК",
+  "threats":"Погрози, психологічний тиск",
+  "seizure":"Вилучення документів, телефону, речей",
+  "masked-anon":"Приховані обличчя, відмова представитися",
+  "obstruction":"Перешкоджання зйомці / виклику адвоката",
+  "grave-harm":"Смерть або тяжкі тілесні ушкодження",
+  "other-tck":"Інше порушення з боку ТЦК"
+};
+const ACTOR = {
+  "tck-staff":"Працівники ТЦК","tck-police":"ТЦК спільно з поліцією","police":"Поліція",
+  "unknown-mil":"Невідомі особи у військовій формі","officials":"Посадовці / керівництво","other-actor":"Інші"
+};
+const safeJson = (s,d) => { try { return JSON.parse(s); } catch(e){ return d; } };
 async function api(path, method="GET", body){
   const r = await fetch(path, { method, headers: body?{"Content-Type":"application/json"}:{}, body: body?JSON.stringify(body):undefined });
   if(!r.ok) throw new Error("HTTP "+r.status);
@@ -58,17 +78,31 @@ function suggestedMerge(inc){
   }
   return "";
 }
+// Один блок подання: контакт, посилання з raw_json (навіть ті, що не стали
+// evidence-рядками), дата подачі та повний payload — модерація бачить усе.
+function subBlock(s){
+  const j = safeJson(s.raw_json, {});
+  const links = (j.evidence||[]).map(e=>`<div>🔗 <a href="${esc(e.url)}" target="_blank" rel="noopener noreferrer">${esc(e.url)}</a>${e.snapshotUrl?` · <a href="${esc(e.snapshotUrl)}" target="_blank" rel="noopener">копія</a>`:""}</div>`).join("");
+  return `<div class="sub">✉️ контакт: ${esc(s.contact||"— (анонім)")}${s.is_duplicate?' <span class="badge">дубль-свідок</span>':""} · подано: ${esc((j.submittedAt||s.created_at||"").slice(0,16).replace("T"," "))}
+    ${links || '<div class="nolinks">⚠️ Посилань не додано. Якщо є контакт — запросіть матеріали (файл можна попросити викласти на Google Drive і надіслати лінк).</div>'}
+    <details><summary>повне подання (raw)</summary><pre>${esc(JSON.stringify(j, null, 2))}</pre></details>
+  </div>`;
+}
 function render(q){
   const el = document.getElementById("queue");
   if(!q.length){ el.innerHTML = `<p class="empty">✓ Черга порожня — усе перевірено.</p>`; return; }
-  el.innerHTML = q.map(inc => { const sug = suggestedMerge(inc); return `
+  el.innerHTML = q.map(inc => {
+    const sug = suggestedMerge(inc);
+    const actors = safeJson(inc.actors, []);
+    return `
     <div class="card" data-id="${esc(inc.id)}">
-      <div class="meta">${esc(inc.category)} · ${esc(inc.type)} · ${esc(inc.oblast)}${inc.city?", "+esc(inc.city):""} · ${esc(inc.incident_date||"без дати")}${inc.date_approx?" (≈)":""}</div>
+      <div class="meta">${esc(inc.category)} · <strong>${esc(TYPE[inc.type]||inc.type)}</strong> · ${esc(inc.oblast)}${inc.city?", "+esc(inc.city):""} · ${esc(inc.incident_date||"без дати")}${inc.date_approx?" (≈)":""}</div>
       <div class="meta">id: ${esc(inc.id)} · створено: ${esc(inc.created_at)}</div>
+      ${actors.length?`<div class="meta">👤 Фігурують: ${actors.map(a=>esc(ACTOR[a]||a)).join(" · ")}</div>`:""}
       ${sug?`<div class="meta"><span class="badge">⇄ можливий дубль</span> запису <code>${esc(sug)}</code> — поле об'єднання вже заповнено</div>`:""}
       <div class="summary">${esc(inc.summary)}</div>
       ${(inc.evidence||[]).map(e=>`<div class="ev">🎥 <a href="${esc(e.url)}" target="_blank" rel="noopener noreferrer">${esc(e.url)}</a>${e.snapshot_url?` · <a href="${esc(e.snapshot_url)}" target="_blank" rel="noopener">копія</a>`:""}<br><small>${esc(e.platform||"")} · ${esc(e.canonical_id||"")} · hash ${esc((e.hash||"").slice(0,16))}…</small></div>`).join("")}
-      ${(inc.submissions||[]).map(s=>`<div class="sub">✉️ контакт: ${esc(s.contact||"— (анонім)")}${s.is_duplicate?' <span class="badge">дубль-свідок</span>':""}</div>`).join("")}
+      ${(inc.submissions||[]).map(subBlock).join("")}
       <div class="actions">
         <button class="ok" data-act="verify">✓ Опублікувати</button>
         <button class="no" data-act="reject">✕ Відхилити</button>
