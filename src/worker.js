@@ -29,8 +29,18 @@ export default {
     } catch (err) {
       return json({ error: "server_error", detail: String(err && err.message || err) }, 500);
     }
-    // Статика.
-    return env.ASSETS.fetch(request);
+    // Статика. Воркер сюди потрапляє лише коли асет не знайдено, тож
+    // невідомі шляхи (/archive, /s/<id>) віддаємо як index.html —
+    // роутинг далі відпрацює на клієнті (History API).
+    const asset = await env.ASSETS.fetch(request);
+    if (asset.status === 404 && request.method === "GET") {
+      const index = await env.ASSETS.fetch(new URL("/", url));
+      return new Response(index.body, {
+        status: 200,
+        headers: index.headers
+      });
+    }
+    return asset;
   }
 };
 

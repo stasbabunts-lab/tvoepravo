@@ -4,7 +4,7 @@
     {
       "name": "pamyatka",
       "runtimeExecutable": "npx",
-      "runtimeArgs": ["--yes", "serve", "-l", "4173", "."],
+      "runtimeArgs": ["--yes", "serve", "-s", "-l", "4173", "."],
       "port": 4173
     }
   ]

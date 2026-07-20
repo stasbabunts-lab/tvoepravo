@@ -1,4 +1,5 @@
-// Пам'ятка — SPA без збірки. Роутинг: #/ (головна), #/s/<id> (ситуація).
+// Пам'ятка — SPA без збірки. Роутинг по справжніх шляхах (History API):
+// / (головна), /s/<id> (ситуація), /archive* (архів). Worker робить SPA-fallback.
 // Статус користувача живе лише в localStorage — жодних даних на сервер.
 
 (function () {
@@ -122,7 +123,7 @@
         <h2>${g}</h2>
         <div class="cards">
           ${groups[g].map((s) =>
-            `<a class="sit-card" href="#/s/${s.id}" data-search="${esc(s.title.toLowerCase())}">
+            `<a class="sit-card" href="/s/${s.id}" data-search="${esc(s.title.toLowerCase())}">
                  ${icon(s.icon)}
                  <h3>${esc(s.title)}</h3>
                </a>`
@@ -174,7 +175,7 @@
           ${icon(sit.icon)}
           <h1>${esc(sit.title)}</h1>
           <p>${esc(sit.stubNote || "Матеріал готується.")}</p>
-          <p><a href="#/">${icon("i-back", "icon")} До всіх ситуацій</a></p>
+          <p><a href="/">${icon("i-back", "icon")} До всіх ситуацій</a></p>
         </div>`;
       return;
     }
@@ -186,7 +187,7 @@
     app.innerHTML = `
       <aside class="sidebar">${sidebar}</aside>
       <article>
-        <nav class="crumbs"><a href="#/">${icon("i-back", "icon")} Всі ситуації</a> · ${esc(sit.group)}</nav>
+        <nav class="crumbs"><a href="/">${icon("i-back", "icon")} Всі ситуації</a> · ${esc(sit.group)}</nav>
         <header class="sit-head">
           <h1>${esc(sit.title)}</h1>
           <div class="badges">
@@ -295,7 +296,7 @@
       <div class="nav-group">
         <p class="nav-group-title">${g}</p>
         ${groups[g].map((s) =>
-          `<a class="nav-item ${s.id === activeId ? "active" : ""}" href="#/s/${s.id}">
+          `<a class="nav-item ${s.id === activeId ? "active" : ""}" href="/s/${s.id}">
              ${esc(s.title)}
            </a>`).join("")}
       </div>`).join("");
@@ -329,7 +330,7 @@
           ${icon("i-phone")}
           <span><span class="small">${PHONE_LEGAL_AID.name}</span><span class="big">${PHONE_LEGAL_AID.label}</span></span>
         </a>
-        <a class="panic-more" href="#/s/street-stop">Розібратися детально →</a>
+        <a class="panic-more" href="/s/street-stop">Розібратися детально →</a>
       </div>
     `;
     panicOverlay.hidden = false;
@@ -352,13 +353,22 @@
   document.addEventListener("keydown", (e) => { if (e.key === "Escape" && !panicOverlay.hidden) closePanic(); });
 
   // ---------- Роутер ----------
+  // Шляхи справжні (History API): / , /s/<id> , /archive*
+  const currentPath = () => location.pathname.replace(/\/+$/, "") || "/";
+
+  function navigate(path) {
+    if (path === currentPath()) return;
+    history.pushState({}, "", path);
+    render();
+  }
+
   function render() {
-    const hash = location.hash || "#/";
+    const path = currentPath();
     // В архіві паніка-кнопка і статус не потрібні — вони про особисту ситуацію,
     // а не про документування. Клас на body вимикає їх у CSS.
-    document.body.classList.toggle("archive-mode", hash.startsWith("#/archive"));
-    if (hash.startsWith("#/archive") && window.ARCHIVE) { window.ARCHIVE.render(hash); return; }
-    const m = hash.match(/^#\/s\/([\w-]+)/);
+    document.body.classList.toggle("archive-mode", path.startsWith("/archive"));
+    if (path.startsWith("/archive") && window.ARCHIVE) { window.ARCHIVE.render(path); return; }
+    const m = path.match(/^\/s\/([\w-]+)/);
     if (m) {
       const sit = SITUATIONS.find((s) => s.id === m[1]);
       if (sit && !sit.stub) { renderSituation(sit); return; }
@@ -366,7 +376,18 @@
     renderHome();
   }
 
-  window.addEventListener("hashchange", render);
+  window.addEventListener("popstate", render);
+
+  // Внутрішні посилання ведемо через роутер, зовнішні й якорі (#…) лишаємо браузеру.
+  document.addEventListener("click", (e) => {
+    if (e.defaultPrevented || e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
+    const a = e.target.closest && e.target.closest("a[href]");
+    if (!a || a.target === "_blank" || a.hasAttribute("download")) return;
+    const href = a.getAttribute("href");
+    if (!href || !href.startsWith("/")) return; // зовнішні, tel:, mailto:, #якорі
+    e.preventDefault();
+    navigate(href);
+  });
 
   document.getElementById("db-date").textContent = DB_UPDATED;
 
@@ -376,6 +397,17 @@
     supportLink.href = SUPPORT_URL;
     supportLink.hidden = false;
   }
+
+  // Сумісність зі старими посиланнями виду /#/archive — переводимо на /archive.
+  // Спрацьовує і при відкритті ззовні, і при кліку вже на сайті (зміна хеша
+  // не перезавантажує сторінку, тому слухаємо hashchange окремо).
+  function migrateLegacyHash() {
+    if (!location.hash.startsWith("#/")) return false;
+    history.replaceState({}, "", location.hash.slice(1) || "/");
+    return true;
+  }
+  window.addEventListener("hashchange", () => { if (migrateLegacyHash()) render(); });
+  migrateLegacyHash();
 
   initStatusSelect();
   render();

@@ -1,7 +1,7 @@
-// Архів: окремий модуль SPA. Роутинг делегується з app.js для хешів #/archive*.
-//   #/archive         — лендинг + перегляд/пошук
-//   #/archive/c/<id>  — картка випадку
-//   #/archive/add     — форма додавання (майстер із пошуком-перед-додаванням)
+// Архів: окремий модуль SPA. Роутинг делегується з app.js для шляхів /archive*.
+//   /archive         — лендинг + перегляд/пошук
+//   /archive/c/<id>  — картка випадку
+//   /archive/add     — форма додавання (майстер із пошуком-перед-додаванням)
 //
 // Свідчення не зберігаються тут: форма POST-ить на /api/submit (Worker + D1).
 // Опубліковані (verified) записи приходять статикою через ARC_CASES.
@@ -102,14 +102,14 @@
       <div class="arc-principle">${icon(p.icon)}<div><strong>${esc(p.title)}</strong><p>${esc(p.text)}</p></div></div>`).join("");
 
     return `
-      <nav class="crumbs"><a href="#/">${icon("i-back", "icon")} На головну</a> · Архів</nav>
+      <nav class="crumbs"><a href="/">${icon("i-back", "icon")} На головну</a> · Архів</nav>
 
       <div class="arc-hero">
         <span class="arc-kicker">${icon("i-books")} Публічний архів свідчень</span>
         <h1>Архів злочинів ТЦК</h1>
         <p class="arc-lead">${esc(ARC_DISCLAIMERS.purpose)}</p>
         <div class="arc-hero-actions">
-          <a class="arc-btn primary" href="#/archive/add">${icon("i-siren")} Додати випадок</a>
+          <a class="arc-btn primary" href="/archive/add">${icon("i-siren")} Додати випадок</a>
           <a class="arc-btn ghost" href="#arc-browse">${icon("i-search")} Переглянути записи</a>
         </div>
         <p class="arc-count">${cases.length ? `У відкритому доступі: <strong>${cases.length}</strong> перевірених записів` : ""}</p>
@@ -145,7 +145,7 @@
   function caseRow(c) {
     const cat = catById(c.category);
     return `
-      <a class="arc-row" href="#/archive/c/${esc(c.id)}">
+      <a class="arc-row" href="/archive/c/${esc(c.id)}">
         <div class="arc-row-icon">${icon(cat?.icon || "i-alert")}</div>
         <div class="arc-row-main">
           <p class="arc-row-title">${esc(c.title)}</p>
@@ -170,7 +170,7 @@
       list.innerHTML = items.length
         ? items.map(caseRow).join("")
         : any
-          ? `<p class="arc-empty">${icon("i-info")} Нічого не знайдено. Якщо ви свідок такого випадку — <a href="#/archive/add">додайте його</a>.</p>`
+          ? `<p class="arc-empty">${icon("i-info")} Нічого не знайдено. Якщо ви свідок такого випадку — <a href="/archive/add">додайте його</a>.</p>`
           : "";
     }
     [q, ft, fo].forEach((el) => el && el.addEventListener("input", run));
@@ -199,7 +199,7 @@
   // ---------- Картка випадку ----------
   function renderCase(id) {
     const c = ARC_CASES.find((x) => x.id === id);
-    if (!c) return `<div class="stub-page"><h1>Запис не знайдено</h1><p><a href="#/archive">${icon("i-back")} До архіву</a></p></div>`;
+    if (!c) return `<div class="stub-page"><h1>Запис не знайдено</h1><p><a href="/archive">${icon("i-back")} До архіву</a></p></div>`;
     const cat = catById(c.category);
     const evHtml = (c.evidence || []).map((e, i) => `
       <div class="arc-ev">
@@ -210,7 +210,7 @@
       </div>`).join("");
 
     return `
-      <nav class="crumbs"><a href="#/archive">${icon("i-back", "icon")} До архіву</a> · ${esc(cat?.label || "")}</nav>
+      <nav class="crumbs"><a href="/archive">${icon("i-back", "icon")} До архіву</a> · ${esc(cat?.label || "")}</nav>
       <header class="sit-head">
         <h1>${esc(c.title)}</h1>
         <div class="badges">
@@ -244,7 +244,7 @@
   // ---------- Форма додавання ----------
   function renderAdd() {
     return `
-      <nav class="crumbs"><a href="#/archive">${icon("i-back", "icon")} До архіву</a> · Додати випадок</nav>
+      <nav class="crumbs"><a href="/archive">${icon("i-back", "icon")} До архіву</a> · Додати випадок</nav>
       <div class="arc-hero compact">
         <h1>Додати випадок</h1>
         <p class="arc-lead">Спершу перевіримо, чи такого запису ще немає — щоб не було дублів. Заповнюйте лише те, що знаєте напевно.</p>
@@ -477,13 +477,13 @@
   }
 
   // ---------- Роутер ----------
-  function render(hash) {
+  function render(path) {
     const app = document.getElementById("app");
     app.className = "layout";
     let m;
-    if ((m = hash.match(/^#\/archive\/c\/([\w-]+)/))) {
+    if ((m = path.match(/^\/archive\/c\/([\w-]+)/))) {
       app.innerHTML = `<article>${renderCase(m[1])}</article>`;
-    } else if (hash.match(/^#\/archive\/add/)) {
+    } else if (path.match(/^\/archive\/add/)) {
       app.innerHTML = `<article>${renderAdd()}</article>`;
       bindAdd(app);
       mountTurnstile(app);
