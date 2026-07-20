@@ -14,14 +14,11 @@ routes = [
 directory = "."
 binding = "ASSETS"
 
-# База архіву. Розкоментувати після `wrangler d1 create tvoepravo_archive`
-# і підставити реальний database_id (див. ARCHIVE_SETUP.md).
-# Поки блок вимкнено: сайт і розділ «Архів» працюють у режимі перегляду,
-# а /api/* чесно віддає 503 «приймання ще не активовано».
-# [[d1_databases]]
-# binding = "DB"
-# database_name = "tvoepravo_archive"
-# database_id = "REPLACE_WITH_D1_ID"
+# База архіву (див. ARCHIVE_SETUP.md).
+[[d1_databases]]
+binding = "DB"
+database_name = "tvoepravo_archive"
+database_id = "a1238dee-3e7f-440b-9699-63166d408449"
 
 [vars]
 # Сіль для хешування IP у submissions (не секрет, але зроби унікальною).
