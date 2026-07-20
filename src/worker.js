@@ -83,29 +83,24 @@ async function handleSubmit(request, env) {
     .slice(0, 20);
   const canonicals = [...new Set(evidence.map((e) => str(e.canonicalId)).filter(Boolean))];
 
-  // Дедуп: чи є вже хоч одне з цих посилань в архіві?
-  let existing = null;
+  // Дублі не блокуємо: подання приймаємо завжди, а модерації лише підказуємо,
+  // з яким записом його об'єднати (attachTo зі сторінки випадку або збіг посилання).
+  const existingCanon = new Set();
+  let suggestedMerge = str(body.attachTo) || null;
   if (canonicals.length) {
     const holes = canonicals.map(() => "?").join(",");
-    existing = await env.DB.prepare(
-      `SELECT incident_id FROM evidence WHERE canonical_id IN (${holes})`
-    ).bind(...canonicals).first();
+    const known = await env.DB.prepare(
+      `SELECT canonical_id, incident_id FROM evidence WHERE canonical_id IN (${holes})`
+    ).bind(...canonicals).all();
+    for (const r of known.results || []) {
+      existingCanon.add(r.canonical_id);
+      if (!suggestedMerge) suggestedMerge = r.incident_id;
+    }
   }
 
+  // Новий інцидент (pending) — навіть якщо схоже на дубль: краще зайвий запис
+  // у черзі модерації, ніж відлякана людина чи втрачене свідчення.
   const subId = uuid();
-
-  if (existing) {
-    // Другий свідок того самого ролика: свідчення не задвоюємо, але подання
-    // зберігаємо для модерації (контакт, контекст) і повідомляємо клієнта.
-    await env.DB.prepare(
-      "INSERT INTO submissions (id, incident_id, contact, ip_hash, user_agent, raw_json, turnstile_ok, is_duplicate, created_at) VALUES (?,?,?,?,?,?,?,?,?)"
-    ).bind(subId, existing.incident_id, str(body.contact) || null, ipHash,
-      request.headers.get("User-Agent") || "", JSON.stringify(body), turnstileOk, 1, ts).run();
-    await audit(env, existing.incident_id, "submit", null, "duplicate evidence, submission stored");
-    return json({ status: "duplicate", incidentId: existing.incident_id }, 409);
-  }
-
-  // Новий інцидент (pending).
   const incId = uuid();
   await env.DB.prepare(
     `INSERT INTO incidents (id, category, type, oblast, city, incident_date, date_approx, summary, actors, courts, status, created_at, updated_at)
@@ -115,19 +110,26 @@ async function handleSubmit(request, env) {
     JSON.stringify(arr(body.actors)), JSON.stringify(["ecthr", "un-hrc"]), ts, ts).run();
 
   for (const e of evidence) {
+    const cid = str(e.canonicalId) || null;
+    // Відоме посилання не задвоюємо (UNIQUE canonical_id): воно лишається
+    // в raw_json подання, а записи об'єднає модератор.
+    if (cid && existingCanon.has(cid)) continue;
     await env.DB.prepare(
       "INSERT INTO evidence (id, incident_id, url, platform, canonical_id, hash, snapshot_url, captured_at, created_at) VALUES (?,?,?,?,?,?,?,?,?)"
-    ).bind(uuid(), incId, str(e.url), str(e.platform) || null, str(e.canonicalId) || null,
+    ).bind(uuid(), incId, str(e.url), str(e.platform) || null, cid,
       str(e.hash) || null, str(e.snapshotUrl) || null, str(e.capturedAt) || null, ts).run();
   }
 
   await env.DB.prepare(
     "INSERT INTO submissions (id, incident_id, contact, ip_hash, user_agent, raw_json, turnstile_ok, is_duplicate, created_at) VALUES (?,?,?,?,?,?,?,?,?)"
   ).bind(subId, incId, str(body.contact) || null, ipHash,
-    request.headers.get("User-Agent") || "", JSON.stringify(body), turnstileOk, 0, ts).run();
+    request.headers.get("User-Agent") || "",
+    JSON.stringify(suggestedMerge ? { ...body, _suggestedMerge: suggestedMerge } : body),
+    turnstileOk, suggestedMerge ? 1 : 0, ts).run();
 
-  await audit(env, incId, "submit", null, "new incident, pending");
-  return json({ status: "pending", incidentId: incId }, 201);
+  await audit(env, incId, "submit", null,
+    suggestedMerge ? "pending; possible duplicate of " + suggestedMerge : "new incident, pending");
+  return json({ status: "pending", incidentId: incId, suggestedMerge: suggestedMerge || undefined }, 201);
 }
 
 // ---------- Публічні записи ----------
@@ -177,7 +179,7 @@ async function handleMod(request, env, p) {
     for (const inc of results || []) {
       const ev = await env.DB.prepare("SELECT * FROM evidence WHERE incident_id = ?").bind(inc.id).all();
       const subs = await env.DB.prepare(
-        "SELECT contact, is_duplicate, created_at FROM submissions WHERE incident_id = ?"
+        "SELECT contact, is_duplicate, created_at, raw_json FROM submissions WHERE incident_id = ?"
       ).bind(inc.id).all();
       out.push({ ...inc, evidence: ev.results || [], submissions: subs.results || [] });
     }

@@ -230,6 +230,7 @@
       <section class="section">
         <h2>${icon("i-video")} Свідчення та джерела</h2>
         <div class="arc-ev-list">${evHtml || "<p>—</p>"}</div>
+        <p style="margin-top:14px"><a class="arc-btn primary" href="/archive/add?to=${esc(c.id)}">${icon("i-siren")} Я теж свідок — додати своє свідчення</a></p>
       </section>
 
       <section class="section">
@@ -243,14 +244,21 @@
 
   // ---------- Форма додавання ----------
   function renderAdd() {
+    // ?to=<id> — режим «додати свідчення до наявного запису» (кнопка на сторінці випадку).
+    const attachTo = new URLSearchParams(location.search).get("to") || "";
+    const target = attachTo ? ARC_CASES.find((c) => c.id === attachTo) : null;
     return `
-      <nav class="crumbs"><a href="/archive">${icon("i-back", "icon")} До архіву</a> · Додати випадок</nav>
+      <nav class="crumbs"><a href="/archive">${icon("i-back", "icon")} До архіву</a> · ${attachTo ? "Додати свідчення" : "Додати випадок"}</nav>
       <div class="arc-hero compact">
-        <h1>Додати випадок</h1>
-        <p class="arc-lead">Спершу перевіримо, чи такого запису ще немає — щоб не було дублів. Заповнюйте лише те, що знаєте напевно.</p>
+        <h1>${attachTo ? "Додати свідчення до випадку" : "Додати випадок"}</h1>
+        <p class="arc-lead">${attachTo
+          ? "Опишіть, що бачили саме ви, і додайте свої посилання — навіть якщо це той самий ролик. Кожне незалежне свідчення підсилює запис."
+          : "Заповнюйте лише те, що знаєте напевно. Якщо схожий запис уже є — нічого страшного: ми приймемо ваше свідчення і об'єднаємо записи."}</p>
       </div>
+      ${attachTo ? `
+      <div id="arc-attach-banner" class="status-alert info">${icon("i-link")}<div>Ваше свідчення буде додано до запису${target ? `: <strong>${esc(target.title)}</strong>` : ", який уже є в архіві"}. <button type="button" id="arc-attach-clear" class="arc-btn ghost small">Ні, це інший випадок</button></div></div>` : ""}
 
-      <form id="arc-form" class="arc-form" novalidate>
+      <form id="arc-form" class="arc-form" novalidate data-attach="${esc(attachTo)}">
         <fieldset class="arc-fs">
           <legend>1. Що і де сталося</legend>
           <label>Тип випадку
@@ -372,6 +380,14 @@
 
     root.querySelector("#arc-add-link").addEventListener("click", addRow);
 
+    // «Ні, це інший випадок» — вимикає режим додавання до наявного запису.
+    root.querySelector("#arc-attach-clear")?.addEventListener("click", () => {
+      form.dataset.attach = "";
+      const banner = root.querySelector("#arc-attach-banner");
+      if (banner) banner.hidden = true;
+      history.replaceState({}, "", "/archive/add");
+    });
+
     linksBox.addEventListener("click", (e) => {
       const del = e.target.closest(".arc-link-del");
       if (!del) return;
@@ -438,9 +454,9 @@
         <div class="arc-dupes-inner ${exact ? "exact" : ""}">
           ${icon("i-alert")}
           <div>
-            <strong>${exact ? "Таке посилання вже є в архіві." : "Можливо, цей випадок уже описано:"}</strong>
+            <strong>${exact ? "Таке посилання вже є в архіві — ваше свідчення стане його підтвердженням." : "Можливо, цей випадок уже описано:"}</strong>
             <div class="arc-dupes-list">${found.slice(0, 4).map(caseRow).join("")}</div>
-            <p class="arc-hint">Якщо це той самий випадок — відкрийте його. Ваше нове свідчення краще додати до наявного запису, ніж створювати дубль.</p>
+            <p class="arc-hint">Якщо це той самий випадок — усе одно надсилайте. Ми нічого не блокуємо: модератор об'єднає записи, а ваше свідчення підсилить наявний.</p>
           </div>
         </div>`;
     }
@@ -475,6 +491,7 @@
         summary: String(fd.get("summary")).trim(),
         actors: fd.getAll("actors"),
         contact: String(fd.get("contact") || "").trim(), // → захищений шар
+        attachTo: form.dataset.attach || null, // свідчення до наявного запису
         evidence,
         turnstileToken: (window.turnstile && document.querySelector('[name="cf-turnstile-response"]')?.value) || null,
         submittedAt: new Date().toISOString()
@@ -488,12 +505,11 @@
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(payload)
         });
-        if (res.status === 409) {
-          const data = await res.json().catch(() => ({}));
-          return showMsg("Таке свідчення вже є в архіві — дякуємо. Дублікати ми об'єднуємо.", "warn");
-        }
         if (!res.ok) throw new Error("bad status " + res.status);
-        showMsg("Дякуємо! Запис надіслано на модерацію. Після перевірки він з'явиться в архіві.", "ok");
+        const data = await res.json().catch(() => ({}));
+        showMsg(data.suggestedMerge
+          ? "Дякуємо! Схожий запис уже є в архіві — після модерації ваше свідчення буде об'єднано з ним."
+          : "Дякуємо! Запис надіслано на модерацію. Після перевірки він з'явиться в архіві.", "ok");
         form.reset();
         linksBox.innerHTML = "";
         addRow();

@@ -47,23 +47,35 @@ async function api(path, method="GET", body){
   return r.json();
 }
 function actorRow(a){ return `<span class="badge" style="background:#555">${esc(a)}</span>`; }
+// Підказка від бекенда: з яким записом імовірно об'єднати (attachTo або збіг посилання).
+function suggestedMerge(inc){
+  for(const s of (inc.submissions||[])){
+    try{
+      const j = JSON.parse(s.raw_json||"{}");
+      if(j._suggestedMerge) return j._suggestedMerge;
+      if(j.attachTo) return j.attachTo;
+    }catch(e){}
+  }
+  return "";
+}
 function render(q){
   const el = document.getElementById("queue");
   if(!q.length){ el.innerHTML = `<p class="empty">✓ Черга порожня — усе перевірено.</p>`; return; }
-  el.innerHTML = q.map(inc => `
+  el.innerHTML = q.map(inc => { const sug = suggestedMerge(inc); return `
     <div class="card" data-id="${esc(inc.id)}">
       <div class="meta">${esc(inc.category)} · ${esc(inc.type)} · ${esc(inc.oblast)}${inc.city?", "+esc(inc.city):""} · ${esc(inc.incident_date||"без дати")}${inc.date_approx?" (≈)":""}</div>
       <div class="meta">id: ${esc(inc.id)} · створено: ${esc(inc.created_at)}</div>
+      ${sug?`<div class="meta"><span class="badge">⇄ можливий дубль</span> запису <code>${esc(sug)}</code> — поле об'єднання вже заповнено</div>`:""}
       <div class="summary">${esc(inc.summary)}</div>
       ${(inc.evidence||[]).map(e=>`<div class="ev">🎥 <a href="${esc(e.url)}" target="_blank" rel="noopener noreferrer">${esc(e.url)}</a>${e.snapshot_url?` · <a href="${esc(e.snapshot_url)}" target="_blank" rel="noopener">копія</a>`:""}<br><small>${esc(e.platform||"")} · ${esc(e.canonical_id||"")} · hash ${esc((e.hash||"").slice(0,16))}…</small></div>`).join("")}
       ${(inc.submissions||[]).map(s=>`<div class="sub">✉️ контакт: ${esc(s.contact||"— (анонім)")}${s.is_duplicate?' <span class="badge">дубль-свідок</span>':""}</div>`).join("")}
       <div class="actions">
         <button class="ok" data-act="verify">✓ Опублікувати</button>
         <button class="no" data-act="reject">✕ Відхилити</button>
-        <input class="merge" placeholder="id для об'єднання">
+        <input class="merge" placeholder="id для об'єднання" value="${esc(sug)}">
         <button data-act="merge">⇄ Об'єднати</button>
       </div>
-    </div>`).join("");
+    </div>`; }).join("");
   el.querySelectorAll(".card").forEach(card => {
     const id = card.dataset.id;
     card.querySelector('[data-act=verify]').onclick = () => act("/api/mod/verify",{id},card);
