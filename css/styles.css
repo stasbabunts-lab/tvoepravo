@@ -453,6 +453,11 @@ article > .expert-slot { margin: 0 0 20px; max-width: none; }
 .support-btn[hidden] { display: none; }
 
 /* ============ Архів ============ */
+/* Розділ архіву — про документування, не про власну ситуацію:
+   ховаємо паніка-кнопку і перемикач статусу. */
+body.archive-mode .panic-fab,
+body.archive-mode .status-picker { display: none; }
+
 .header-link {
   display: inline-flex; align-items: center; gap: 6px;
   font-size: 14px; font-weight: 500; color: var(--text-2);

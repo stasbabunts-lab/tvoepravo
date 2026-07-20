@@ -354,6 +354,9 @@
   // ---------- Роутер ----------
   function render() {
     const hash = location.hash || "#/";
+    // В архіві паніка-кнопка і статус не потрібні — вони про особисту ситуацію,
+    // а не про документування. Клас на body вимикає їх у CSS.
+    document.body.classList.toggle("archive-mode", hash.startsWith("#/archive"));
     if (hash.startsWith("#/archive") && window.ARCHIVE) { window.ARCHIVE.render(hash); return; }
     const m = hash.match(/^#\/s\/([\w-]+)/);
     if (m) {
