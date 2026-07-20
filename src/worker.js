@@ -35,10 +35,13 @@ export default {
     const asset = await env.ASSETS.fetch(request);
     if (asset.status === 404 && request.method === "GET") {
       const index = await env.ASSETS.fetch(new URL("/", url));
-      return new Response(index.body, {
-        status: 200,
-        headers: index.headers
-      });
+      const headers = new Headers(index.headers);
+      // Оболонку SPA не кешуємо на edge: інакше стара версія index.html
+      // залипає під конкретним шляхом (/archive/add) і сторінка ламається
+      // після деплою. Самі ассети (js/css) кешуються як звичайно.
+      headers.set("Cache-Control", "no-store");
+      headers.delete("ETag");
+      return new Response(index.body, { status: 200, headers });
     }
     return asset;
   }
