@@ -540,7 +540,6 @@ body.archive-mode .status-picker { display: none; }
   border: 1px solid var(--border); border-radius: var(--radius); background: var(--surface); padding: 12px 14px;
 }
 .arc-row:hover { border-color: var(--accent); text-decoration: none; }
-.arc-row.is-example { opacity: .72; border-style: dashed; }
 .arc-row-icon svg { width: 22px; height: 22px; color: var(--accent); }
 .arc-row-main { flex: 1; min-width: 0; }
 .arc-row-title { margin: 0 0 2px; font-size: 15px; font-weight: 500; color: var(--text); }

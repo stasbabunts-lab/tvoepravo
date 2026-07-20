@@ -17,8 +17,8 @@
   const actorLabel = (id) => ARC_ACTORS.find((a) => a.id === id)?.label || id;
   const courtById = (id) => ARC_COURTS.find((c) => c.id === id);
 
-  // Реальні (не приклад) записи для лічильників.
-  const realCases = () => ARC_CASES.filter((c) => !c.example);
+  // Публічний архів містить лише перевірені записи.
+  const realCases = () => ARC_CASES;
 
   // ---------- Каноникалізація посилань і хеш ----------
   // Мета: одна й та сама відеозйомка від різних людей = один canonicalId → дедуп.
@@ -66,7 +66,6 @@
 
   // ---------- Пошук по опублікованому архіву ----------
   function scoreMatch(c, { q, category, type, oblast, canonical }) {
-    if (c.example) return 0;
     let s = 0;
     if (canonical && c.evidence?.some((e) => e.canonicalId === canonical)) s += 100; // той самий ролик
     if (category && c.category === category) s += 2;
@@ -113,7 +112,7 @@
           <a class="arc-btn primary" href="#/archive/add">${icon("i-siren")} Додати випадок</a>
           <a class="arc-btn ghost" href="#arc-browse">${icon("i-search")} Переглянути записи</a>
         </div>
-        <p class="arc-count">${cases.length ? `У відкритому доступі: <strong>${cases.length}</strong> перевірених записів` : "Архів щойно відкрито — станьте першим, хто задокументує випадок."}</p>
+        <p class="arc-count">${cases.length ? `У відкритому доступі: <strong>${cases.length}</strong> перевірених записів` : ""}</p>
       </div>
 
       <section class="arc-section arc-courts-block">
@@ -146,10 +145,10 @@
   function caseRow(c) {
     const cat = catById(c.category);
     return `
-      <a class="arc-row ${c.example ? "is-example" : ""}" href="#/archive/c/${esc(c.id)}">
+      <a class="arc-row" href="#/archive/c/${esc(c.id)}">
         <div class="arc-row-icon">${icon(cat?.icon || "i-alert")}</div>
         <div class="arc-row-main">
-          <p class="arc-row-title">${esc(c.title)}${c.example ? ` <span class="arc-badge">приклад</span>` : ""}</p>
+          <p class="arc-row-title">${esc(c.title)}</p>
           <p class="arc-row-meta">${esc(cat?.short || "")} · ${esc(typeLabel(c.category, c.type))} · ${esc(c.oblast)}${c.city && c.city !== "—" ? ", " + esc(c.city) : ""} · ${esc(c.date)}${c.dateApprox ? " (≈)" : ""}</p>
         </div>
         <div class="arc-row-ev">${icon("i-video")} ${(c.evidence || []).length}</div>
@@ -166,12 +165,13 @@
     function run() {
       const filters = { q: q.value.trim().toLowerCase(), type: ft.value, oblast: fo.value };
       const any = q.value || ft.value || fo.value;
-      let items = any ? searchCases(filters) : ARC_CASES.slice();
-      // приклади показуємо лише коли немає реальних або без фільтрів
-      if (any) items = items.filter((c) => !c.example);
+      const items = any ? searchCases(filters) : ARC_CASES.slice();
+      // Порожній архів без фільтрів — нічого не показуємо; «не знайдено» лише для пошуку.
       list.innerHTML = items.length
         ? items.map(caseRow).join("")
-        : `<p class="arc-empty">${icon("i-info")} Нічого не знайдено. Якщо ви свідок такого випадку — <a href="#/archive/add">додайте його</a>.</p>`;
+        : any
+          ? `<p class="arc-empty">${icon("i-info")} Нічого не знайдено. Якщо ви свідок такого випадку — <a href="#/archive/add">додайте його</a>.</p>`
+          : "";
     }
     [q, ft, fo].forEach((el) => el && el.addEventListener("input", run));
     run();
@@ -203,7 +203,7 @@
     const cat = catById(c.category);
     const evHtml = (c.evidence || []).map((e, i) => `
       <div class="arc-ev">
-        <div class="arc-ev-head">${icon("i-video")} Свідчення ${i + 1} ${e.platform && e.platform !== "example" ? `<span class="arc-badge neutral">${esc(e.platform)}</span>` : ""}</div>
+        <div class="arc-ev-head">${icon("i-video")} Свідчення ${i + 1} ${e.platform ? `<span class="arc-badge neutral">${esc(e.platform)}</span>` : ""}</div>
         ${e.url ? `<p><a class="norm-ref" href="${esc(e.url)}" target="_blank" rel="noopener nofollow">${icon("i-external")} Першоджерело</a>${e.snapshotUrl ? ` · <a class="norm-ref" href="${esc(e.snapshotUrl)}" target="_blank" rel="noopener">архівна копія</a>` : ""}</p>` : `<p class="arc-muted">${esc(e.note || "")}</p>`}
         ${e.hash && e.hash !== "—" ? `<p class="arc-hash" title="SHA-256 канонічного посилання">${icon("i-shield")} ${esc(e.hash.slice(0, 24))}…</p>` : ""}
         ${e.capturedAt ? `<p class="arc-muted">Зафіксовано: ${esc(e.capturedAt)}</p>` : ""}
@@ -212,7 +212,7 @@
     return `
       <nav class="crumbs"><a href="#/archive">${icon("i-back", "icon")} До архіву</a> · ${esc(cat?.label || "")}</nav>
       <header class="sit-head">
-        <h1>${esc(c.title)}${c.example ? ` <span class="arc-badge">приклад</span>` : ""}</h1>
+        <h1>${esc(c.title)}</h1>
         <div class="badges">
           <span class="badge neutral">${esc(typeLabel(c.category, c.type))}</span>
           <span class="badge neutral">${esc(c.oblast)}${c.city && c.city !== "—" ? ", " + esc(c.city) : ""}</span>
@@ -372,7 +372,7 @@
       const found = searchCases({
         category: CATEGORY, type: typeSel.value,
         oblast: form.oblast.value, canonical: lastCanonical
-      }).filter((c) => !c.example);
+      });
       if (!found.length) { dupes.hidden = true; dupes.innerHTML = ""; return; }
       const exact = lastCanonical && found.some((c) => c.evidence?.some((e) => e.canonicalId === lastCanonical));
       dupes.hidden = false;
