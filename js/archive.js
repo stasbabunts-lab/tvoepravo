@@ -65,9 +65,10 @@
   }
 
   // ---------- Пошук по опублікованому архіву ----------
-  function scoreMatch(c, { q, category, type, oblast, canonical }) {
+  function scoreMatch(c, { q, category, type, oblast, canonicals }) {
     let s = 0;
-    if (canonical && c.evidence?.some((e) => e.canonicalId === canonical)) s += 100; // той самий ролик
+    // Збіг хоча б по одному посиланню — це майже напевно той самий випадок.
+    if (canonicals?.length && c.evidence?.some((e) => canonicals.includes(e.canonicalId))) s += 100;
     if (category && c.category === category) s += 2;
     if (type && c.type === type) s += 3;
     if (oblast && c.oblast === oblast) s += 3;
@@ -110,7 +111,6 @@
         <p class="arc-lead">${esc(ARC_DISCLAIMERS.purpose)}</p>
         <div class="arc-hero-actions">
           <a class="arc-btn primary" href="/archive/add">${icon("i-siren")} Додати випадок</a>
-          <a class="arc-btn ghost" href="#arc-browse">${icon("i-search")} Переглянути записи</a>
         </div>
         <p class="arc-count">${cases.length ? `У відкритому доступі: <strong>${cases.length}</strong> перевірених записів` : ""}</p>
       </div>
@@ -281,21 +281,10 @@
         </fieldset>
 
         <fieldset class="arc-fs">
-          <legend>2. Посилання на відео / пост</legend>
-          <label>Пряме посилання (першоджерело)
-            <input name="url" type="url" placeholder="https://…" autocomplete="off" inputmode="url">
-          </label>
-          <div id="arc-url-info" class="arc-url-info" hidden></div>
-          <div class="arc-snapshot" hidden id="arc-snapshot-block">
-            <p class="arc-hint">${icon("i-shield")} Зробіть архівну копію (щоб доказ не зник), відкрийте одну з кнопок і вставте отримане посилання:</p>
-            <div class="arc-snap-btns">
-              <a id="arc-snap-wayback" class="arc-btn ghost small" target="_blank" rel="noopener">Wayback Machine</a>
-              <a id="arc-snap-archive" class="arc-btn ghost small" target="_blank" rel="noopener">archive.today</a>
-            </div>
-            <label>Посилання на архівну копію
-              <input name="snapshotUrl" type="url" placeholder="https://web.archive.org/… або https://archive.ph/…" autocomplete="off">
-            </label>
-          </div>
+          <legend>2. Посилання на відео / пости</legend>
+          <p class="arc-hint">${icon("i-info")} Чим більше незалежних джерел на один випадок — тим сильніший доказ. Додайте всі, які знаєте: різні ракурси, репости, новини.</p>
+          <div id="arc-links"></div>
+          <button type="button" id="arc-add-link" class="arc-btn ghost small">+ Ще посилання</button>
         </fieldset>
 
         <div id="arc-dupes" class="arc-dupes" hidden></div>
@@ -341,46 +330,115 @@
     if (!form) return;
     const CATEGORY = "tck"; // архів наразі лише про злочини ТЦК
     const typeSel = form.type;
-    const urlInp = form.url;
-    const urlInfo = root.querySelector("#arc-url-info");
-    const snapBlock = root.querySelector("#arc-snapshot-block");
+    const linksBox = root.querySelector("#arc-links");
     const dupes = root.querySelector("#arc-dupes");
     const msg = root.querySelector("#arc-form-msg");
-    let lastCanonical = null;
 
-    // Розбір посилання + архівні кнопки + перевірка дублів по canonicalId
-    urlInp.addEventListener("input", () => {
-      const parsed = canonicalizeUrl(urlInp.value);
-      lastCanonical = parsed?.canonical || null;
+    // ----- Список посилань (одне свідчення = один рядок) -----
+    function linkRowHtml() {
+      return `
+        <div class="arc-link-row">
+          <div class="arc-link-head">
+            <span class="arc-link-num"></span>
+            <button type="button" class="arc-link-del" aria-label="Прибрати посилання">✕</button>
+          </div>
+          <input class="arc-link-url" type="url" placeholder="https://…" autocomplete="off" inputmode="url">
+          <div class="arc-url-info" hidden></div>
+          <div class="arc-snapshot" hidden>
+            <p class="arc-hint">${icon("i-shield")} Зробіть архівну копію (щоб доказ не зник) і вставте отримане посилання:</p>
+            <div class="arc-snap-btns">
+              <a class="arc-btn ghost small arc-snap-wayback" target="_blank" rel="noopener">Wayback Machine</a>
+              <a class="arc-btn ghost small arc-snap-archive" target="_blank" rel="noopener">archive.today</a>
+            </div>
+            <input class="arc-link-snap" type="url" placeholder="https://web.archive.org/… або https://archive.ph/…" autocomplete="off">
+          </div>
+        </div>`;
+    }
+
+    function renumber() {
+      const rows = [...linksBox.querySelectorAll(".arc-link-row")];
+      rows.forEach((r, i) => {
+        r.querySelector(".arc-link-num").textContent = `Посилання ${i + 1}`;
+        // Останній рядок не даємо прибрати, якщо він єдиний.
+        r.querySelector(".arc-link-del").hidden = rows.length === 1;
+      });
+    }
+
+    function addRow() {
+      linksBox.insertAdjacentHTML("beforeend", linkRowHtml());
+      renumber();
+    }
+    addRow();
+
+    root.querySelector("#arc-add-link").addEventListener("click", addRow);
+
+    linksBox.addEventListener("click", (e) => {
+      const del = e.target.closest(".arc-link-del");
+      if (!del) return;
+      del.closest(".arc-link-row").remove();
+      if (!linksBox.querySelector(".arc-link-row")) addRow();
+      renumber();
+      runDupeCheck();
+    });
+
+    // Розбір посилання + кнопки архівації для конкретного рядка.
+    linksBox.addEventListener("input", (e) => {
+      const inp = e.target.closest(".arc-link-url");
+      if (!inp) { runDupeCheck(); return; }
+      const row = inp.closest(".arc-link-row");
+      const info = row.querySelector(".arc-url-info");
+      const snap = row.querySelector(".arc-snapshot");
+      const parsed = canonicalizeUrl(inp.value);
       if (parsed) {
-        urlInfo.hidden = false;
-        urlInfo.innerHTML = `${icon("i-link")} Розпізнано: <strong>${esc(parsed.platform)}</strong>${parsed.isShortener ? ` <span class="arc-warn-inline">коротке посилання — краще вставити пряме</span>` : ""}`;
-        snapBlock.hidden = false;
-        const enc = encodeURIComponent(urlInp.value.trim());
-        root.querySelector("#arc-snap-wayback").href = `https://web.archive.org/save/${urlInp.value.trim()}`;
-        root.querySelector("#arc-snap-archive").href = `https://archive.ph/?url=${enc}`;
+        const val = inp.value.trim();
+        info.hidden = false;
+        info.innerHTML = `${icon("i-link")} Розпізнано: <strong>${esc(parsed.platform)}</strong>${parsed.isShortener ? ` <span class="arc-warn-inline">коротке посилання — краще вставити пряме</span>` : ""}`;
+        snap.hidden = false;
+        row.querySelector(".arc-snap-wayback").href = `https://web.archive.org/save/${val}`;
+        row.querySelector(".arc-snap-archive").href = `https://archive.ph/?url=${encodeURIComponent(val)}`;
       } else {
-        urlInfo.hidden = true;
-        snapBlock.hidden = true;
+        info.hidden = true;
+        snap.hidden = true;
       }
       runDupeCheck();
     });
 
+    // Усі заповнені рядки → масив свідчень (без порожніх і без повторів).
+    function collectLinks() {
+      const seen = new Set();
+      return [...linksBox.querySelectorAll(".arc-link-row")].map((row) => {
+        const url = row.querySelector(".arc-link-url").value.trim();
+        if (!url) return null;
+        const parsed = canonicalizeUrl(url);
+        const canonicalId = parsed?.canonical || null;
+        if (canonicalId && seen.has(canonicalId)) return null; // те саме посилання двічі
+        if (canonicalId) seen.add(canonicalId);
+        return {
+          url,
+          platform: parsed?.platform || "web",
+          canonicalId,
+          snapshotUrl: row.querySelector(".arc-link-snap").value.trim() || null
+        };
+      }).filter(Boolean);
+    }
+
     [typeSel, form.oblast].forEach((el) => el.addEventListener("change", runDupeCheck));
 
     function runDupeCheck() {
+      const canonicals = collectLinks().map((l) => l.canonicalId).filter(Boolean);
       const found = searchCases({
         category: CATEGORY, type: typeSel.value,
-        oblast: form.oblast.value, canonical: lastCanonical
+        oblast: form.oblast.value, canonicals
       });
       if (!found.length) { dupes.hidden = true; dupes.innerHTML = ""; return; }
-      const exact = lastCanonical && found.some((c) => c.evidence?.some((e) => e.canonicalId === lastCanonical));
+      const exact = canonicals.length &&
+        found.some((c) => c.evidence?.some((e) => canonicals.includes(e.canonicalId)));
       dupes.hidden = false;
       dupes.innerHTML = `
         <div class="arc-dupes-inner ${exact ? "exact" : ""}">
           ${icon("i-alert")}
           <div>
-            <strong>${exact ? "Це посилання вже є в архіві." : "Можливо, цей випадок уже описано:"}</strong>
+            <strong>${exact ? "Таке посилання вже є в архіві." : "Можливо, цей випадок уже описано:"}</strong>
             <div class="arc-dupes-list">${found.slice(0, 4).map(caseRow).join("")}</div>
             <p class="arc-hint">Якщо це той самий випадок — відкрийте його. Ваше нове свідчення краще додати до наявного запису, ніж створювати дубль.</p>
           </div>
@@ -399,9 +457,13 @@
         return showMsg("Заповніть обов'язкові поля: тип, область, опис.", "err");
       }
 
-      const urlVal = String(fd.get("url") || "").trim();
-      const parsed = urlVal ? canonicalizeUrl(urlVal) : null;
-      const hash = urlVal ? await sha256(parsed?.canonical || urlVal) : null;
+      // Хеш рахуємо для кожного посилання окремо — це доказовий відбиток.
+      const capturedAt = new Date().toISOString().slice(0, 10);
+      const evidence = await Promise.all(collectLinks().map(async (l) => ({
+        ...l,
+        hash: await sha256(l.canonicalId || l.url),
+        capturedAt
+      })));
 
       const payload = {
         category: CATEGORY,
@@ -413,14 +475,7 @@
         summary: String(fd.get("summary")).trim(),
         actors: fd.getAll("actors"),
         contact: String(fd.get("contact") || "").trim(), // → захищений шар
-        evidence: urlVal ? [{
-          url: urlVal,
-          platform: parsed?.platform || "web",
-          canonicalId: parsed?.canonical || null,
-          hash,
-          snapshotUrl: String(fd.get("snapshotUrl") || "").trim() || null,
-          capturedAt: new Date().toISOString().slice(0, 10)
-        }] : [],
+        evidence,
         turnstileToken: (window.turnstile && document.querySelector('[name="cf-turnstile-response"]')?.value) || null,
         submittedAt: new Date().toISOString()
       };
@@ -440,9 +495,9 @@
         if (!res.ok) throw new Error("bad status " + res.status);
         showMsg("Дякуємо! Запис надіслано на модерацію. Після перевірки він з'явиться в архіві.", "ok");
         form.reset();
-        document.querySelector("#arc-url-info").hidden = true;
-        document.querySelector("#arc-snapshot-block").hidden = true;
-        document.querySelector("#arc-dupes").hidden = true;
+        linksBox.innerHTML = "";
+        addRow();
+        dupes.hidden = true;
       } catch (err) {
         // Бекенд ще не піднято (локальний перегляд) або мережева помилка.
         showMsg("Не вдалося надіслати зараз. Бекенд прийому може бути ще не налаштований. Дані форми збережено нижче — можна повторити пізніше.", "err");

@@ -453,6 +453,22 @@ article > .expert-slot { margin: 0 0 20px; max-width: none; }
 .support-btn[hidden] { display: none; }
 
 /* ============ Архів ============ */
+.archive-cta {
+  display: flex; align-items: center; justify-content: space-between; gap: 16px; flex-wrap: wrap;
+  border: 1px solid var(--accent-border); background: var(--accent-bg);
+  border-radius: var(--radius); padding: 18px 20px; margin: 28px 0;
+}
+.archive-cta-text { display: flex; gap: 12px; align-items: flex-start; flex: 1; min-width: 260px; }
+.archive-cta-text > svg { width: 24px; height: 24px; color: var(--accent); flex-shrink: 0; margin-top: 2px; }
+.archive-cta h2 { margin: 0 0 4px; font-size: 17px; font-weight: 600; }
+.archive-cta p { margin: 0; font-size: 14px; color: var(--text-2); }
+.archive-cta-btn {
+  display: inline-flex; align-items: center; white-space: nowrap;
+  background: var(--accent); color: #fff; border-radius: 10px;
+  padding: 11px 18px; font-size: 15px; font-weight: 500;
+}
+.archive-cta-btn:hover { filter: brightness(1.06); text-decoration: none; }
+
 /* Розділ архіву — про документування, не про власну ситуацію:
    ховаємо паніка-кнопку і перемикач статусу. */
 body.archive-mode .panic-fab,
@@ -581,6 +597,27 @@ body.archive-mode .status-picker { display: none; }
 .arc-url-info { font-size: 13px; color: var(--text-2); margin-top: 8px; display: flex; align-items: center; gap: 6px; }
 .arc-url-info svg { width: 15px; height: 15px; color: var(--accent); }
 .arc-warn-inline { color: var(--warn); font-size: 12px; }
+.arc-link-row {
+  border: 1px solid var(--border); border-radius: var(--radius-sm);
+  background: var(--surface-2); padding: 12px; margin: 10px 0;
+}
+.arc-link-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px; }
+.arc-link-num { font-size: 12.5px; font-weight: 600; color: var(--text-2); }
+.arc-link-del {
+  border: none; background: none; cursor: pointer; color: var(--muted);
+  font-size: 15px; line-height: 1; padding: 2px 6px; border-radius: 6px;
+}
+.arc-link-del:hover { color: var(--danger); background: var(--danger-bg); }
+.arc-link-del[hidden] { display: none; }
+.arc-link-row input[type="url"] {
+  display: block; width: 100%;
+  font-family: var(--font); font-size: 14.5px; color: var(--text);
+  background: var(--surface); border: 1px solid var(--border-strong);
+  border-radius: 9px; padding: 9px 11px;
+}
+.arc-link-snap { margin-top: 8px; }
+#arc-add-link { margin-top: 4px; }
+
 .arc-snapshot { margin-top: 12px; border-top: 1px dashed var(--border); padding-top: 12px; }
 .arc-snap-btns { display: flex; gap: 8px; margin: 8px 0; flex-wrap: wrap; }
 .arc-actors { border: none; padding: 0; margin: 12px 0 0; }

@@ -74,15 +74,19 @@ async function handleSubmit(request, env) {
   if (cnt && cnt.n >= 10) return json({ error: "rate_limited" }, 429);
 
   const ts = now();
-  const ev = Array.isArray(body.evidence) ? body.evidence[0] : null;
-  const canonical = ev && str(ev.canonicalId) ? str(ev.canonicalId) : null;
+  // Один випадок може мати кілька свідчень (різні ракурси, репости, новини).
+  const evidence = (Array.isArray(body.evidence) ? body.evidence : [])
+    .filter((e) => e && str(e.url))
+    .slice(0, 20);
+  const canonicals = [...new Set(evidence.map((e) => str(e.canonicalId)).filter(Boolean))];
 
-  // Дедуп свідчень: чи є вже такий canonical_id?
+  // Дедуп: чи є вже хоч одне з цих посилань в архіві?
   let existing = null;
-  if (canonical) {
+  if (canonicals.length) {
+    const holes = canonicals.map(() => "?").join(",");
     existing = await env.DB.prepare(
-      "SELECT incident_id FROM evidence WHERE canonical_id = ?"
-    ).bind(canonical).first();
+      `SELECT incident_id FROM evidence WHERE canonical_id IN (${holes})`
+    ).bind(...canonicals).first();
   }
 
   const subId = uuid();
@@ -107,11 +111,11 @@ async function handleSubmit(request, env) {
     str(body.date) || null, body.dateApprox ? 1 : 0, summary,
     JSON.stringify(arr(body.actors)), JSON.stringify(["ecthr", "un-hrc"]), ts, ts).run();
 
-  if (ev && str(ev.url)) {
+  for (const e of evidence) {
     await env.DB.prepare(
       "INSERT INTO evidence (id, incident_id, url, platform, canonical_id, hash, snapshot_url, captured_at, created_at) VALUES (?,?,?,?,?,?,?,?,?)"
-    ).bind(uuid(), incId, str(ev.url), str(ev.platform) || null, canonical,
-      str(ev.hash) || null, str(ev.snapshotUrl) || null, str(ev.capturedAt) || null, ts).run();
+    ).bind(uuid(), incId, str(e.url), str(e.platform) || null, str(e.canonicalId) || null,
+      str(e.hash) || null, str(e.snapshotUrl) || null, str(e.capturedAt) || null, ts).run();
   }
 
   await env.DB.prepare(

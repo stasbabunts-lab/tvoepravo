@@ -95,6 +95,21 @@
     return `<div class="status-alert ${st.level}">${icon(ic)}<div><strong>${stMeta.label}:</strong> ${esc(st.text)}</div></div>`;
   }
 
+  // Вхід до архіву з головної: окремий продукт, тому окремим блоком, а не карткою ситуації.
+  function archiveCta() {
+    return `
+      <section class="archive-cta">
+        <div class="archive-cta-text">
+          ${icon("i-books")}
+          <div>
+            <h2>Архів злочинів ТЦК</h2>
+            <p>Зіткнулися з насильством чи незаконним затриманням — задокументуйте. Свідчення зберігаються для скарг до ЄСПЛ і Комітету ООН з прав людини.</p>
+          </div>
+        </div>
+        <a class="archive-cta-btn" href="/archive">Перейти до архіву →</a>
+      </section>`;
+  }
+
   function roadmapHtml() {
     if (!ROADMAP.length) return "";
     return `
@@ -147,6 +162,7 @@
         ${statusChips("home")}
       </div>
       <div class="groups" id="groups">${groupsHtml}</div>
+      ${archiveCta()}
       ${roadmapHtml()}
     `;
 
