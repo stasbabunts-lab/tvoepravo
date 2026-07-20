@@ -32,7 +32,6 @@ const ARC_ACTORS = [
   { id: "tck-staff",    label: "Працівники ТЦК" },
   { id: "tck-police",   label: "ТЦК спільно з поліцією" },
   { id: "police",       label: "Поліція" },
-  { id: "sbu",          label: "СБУ" },
   { id: "unknown-mil",  label: "Невідомі особи у військовій формі" },
   { id: "officials",    label: "Посадовці / керівництво" },
   { id: "other-actor",  label: "Інші" }
