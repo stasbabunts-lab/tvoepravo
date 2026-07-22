@@ -12,5 +12,6 @@ schema.sql
 src
 scripts
 backups
+grants
 package.json
 package-lock.json
