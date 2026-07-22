@@ -554,7 +554,18 @@
     app.className = "layout";
     let m;
     if ((m = path.match(/^\/archive\/c\/([\w-]+)/))) {
-      app.innerHTML = `<article>${renderCase(m[1])}</article>`;
+      const id = m[1];
+      // Прямий перехід або перезавантаження: ARC_CASES порожній до гідратації,
+      // тож спершу підтягуємо verified-записи з бекенда, а потім рендеримо картку.
+      if (!ARC_CASES.some((x) => x.id === id) && !hydrated) {
+        app.innerHTML = `<article><div class="stub-page"><p>${icon("i-clock")} Завантаження запису…</p></div></article>`;
+        hydrateCases(app).then(() => {
+          app.innerHTML = `<article>${renderCase(id)}</article>`;
+          window.scrollTo({ top: 0 });
+        });
+      } else {
+        app.innerHTML = `<article>${renderCase(id)}</article>`;
+      }
     } else if (path.match(/^\/archive\/add/)) {
       app.innerHTML = `<article>${renderAdd()}</article>`;
       bindAdd(app);
