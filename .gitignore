@@ -6,3 +6,6 @@
 # Wrangler / Node
 .wrangler/
 node_modules/
+
+# Локальні бекапи БД — містять персональні дані заявників, у git не місце
+backups/

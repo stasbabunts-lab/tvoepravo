@@ -10,5 +10,7 @@ README.md
 ARCHIVE_SETUP.md
 schema.sql
 src
+scripts
+backups
 package.json
 package-lock.json
