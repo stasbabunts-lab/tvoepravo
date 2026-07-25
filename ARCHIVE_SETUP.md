@@ -37,6 +37,11 @@ Zero Trust → **Access → Applications → Add** (self-hosted), до 50 кор
 
 Політика: **Allow** → Emails → перелічи пошти модераторів. Метод входу: Google/One-time PIN.
 
+**Щоб рідше вводити код:** у налаштуваннях застосунку → **Session Duration** постав
+довший строк (напр. `1 week` або `1 month`). Це керує тим, як довго діє вхід перед
+повторним PIN — параметра в коді немає, лише в дашборді Access. Вхід через Google
+замість One-time PIN також прибирає введення коду щоразу.
+
 Після цього сторінка `https://tvoepravo.org.ua/admin/moderation.html` і всі `/api/mod/*`
 доступні лише після входу, а Cloudflare додає до запитів заголовки
 `Cf-Access-Jwt-Assertion` і `Cf-Access-Authenticated-User-Email` (їх бачить воркер).

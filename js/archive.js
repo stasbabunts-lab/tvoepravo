@@ -20,6 +20,10 @@
   // Публічний архів містить лише перевірені записи.
   const realCases = () => ARC_CASES;
 
+  // Лічильник записів показуємо лише коли архів наповнився — до цього «1 запис»
+  // виглядає непереконливо. Прибираємо, поки не набереться щонайменше стільки:
+  const MIN_PUBLIC_COUNT = 20;
+
   // ---------- Каноникалізація посилань і хеш ----------
   // Мета: одна й та сама відеозйомка від різних людей = один canonicalId → дедуп.
   const SHORTENERS = ["youtu.be", "t.me", "bit.ly", "cutt.ly", "is.gd", "goo.gl"];
@@ -112,7 +116,7 @@
         <div class="arc-hero-actions">
           <a class="arc-btn primary" href="/archive/add">${icon("i-siren")} Додати випадок</a>
         </div>
-        <p class="arc-count">${cases.length ? `У відкритому доступі: <strong>${cases.length}</strong> перевірених записів` : ""}</p>
+        <p class="arc-count">${cases.length >= MIN_PUBLIC_COUNT ? `У відкритому доступі: <strong>${cases.length}</strong> перевірених записів` : ""}</p>
       </div>
 
       <section class="arc-section arc-courts-block">
@@ -192,7 +196,7 @@
       if (root._arcRerun) root._arcRerun();
       const cnt = root.querySelector(".arc-count");
       const n = realCases().length;
-      if (cnt && n) cnt.innerHTML = `У відкритому доступі: <strong>${n}</strong> перевірених записів`;
+      if (cnt) cnt.innerHTML = n >= MIN_PUBLIC_COUNT ? `У відкритому доступі: <strong>${n}</strong> перевірених записів` : "";
     } catch { /* бекенд ще не піднято — лишаємось на статиці */ }
   }
 
