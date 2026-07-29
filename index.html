@@ -57,6 +57,10 @@
     <span>Твоє право</span>
   </a>
   <div class="header-controls">
+    <a class="header-link" href="/advokaty" title="Адвокати, яким довіряємо">
+      <svg class="icon"><use href="#i-scale"/></svg>
+      <span>Адвокати</span>
+    </a>
     <a class="header-link" href="/archive" title="Архів злочинів ТЦК">
       <svg class="icon"><use href="#i-books"/></svg>
       <span>Архів</span>
@@ -78,7 +82,7 @@
 <div id="panic-overlay" class="panic-overlay" hidden></div>
 
 <footer class="site-footer">
-  <p>Це навігатор по нормах законодавства, а не юридична консультація. Перед важливими рішеннями зверніться до юриста.</p>
+  <p>Це навігатор по нормах законодавства, а не юридична консультація. Перед важливими рішеннями зверніться до <a href="/advokaty">юриста</a>.</p>
   <p>Юрконсультація БПД (безоплатно, цілодобово): <a href="tel:0800213103">0 800 213 103</a> · База оновлена: <span id="db-date"></span></p>
   <p class="footer-support">
     <a id="support-link" class="support-btn" href="#" target="_blank" rel="noopener" hidden>☕ Підтримати проєкт</a>
@@ -86,6 +90,7 @@
 </footer>
 
 <script src="/js/data.js"></script>
+<script src="/js/lawyers-data.js"></script>
 <script src="/js/archive-data.js"></script>
 <script src="/js/archive.js"></script>
 <script src="/js/app.js"></script>

@@ -188,6 +188,41 @@ a:hover { text-decoration: underline; }
 .expert-hint { margin: 2px 0 0; font-size: 13px; color: var(--muted); }
 article > .expert-slot { margin: 0 0 20px; max-width: none; }
 
+/* Адвокати */
+.lawyer-grid {
+  display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 16px; margin-top: 24px;
+}
+.lawyer-card {
+  display: flex; gap: 16px; align-items: flex-start;
+  border: 1px solid var(--border); border-radius: var(--radius);
+  padding: 16px; background: var(--surface);
+}
+.lawyer-photo {
+  width: 72px; height: 72px; border-radius: 50%;
+  object-fit: cover; flex-shrink: 0; background: var(--surface-2);
+}
+.lawyer-photo.placeholder {
+  display: flex; align-items: center; justify-content: center; color: var(--muted);
+}
+.lawyer-photo.placeholder .icon { width: 34px; height: 34px; }
+.lawyer-body { min-width: 0; }
+.lawyer-role {
+  margin: 0; font-size: 12px; font-weight: 600; text-transform: uppercase;
+  letter-spacing: .06em; color: var(--muted);
+}
+.lawyer-name { margin: 2px 0 10px; font-size: 17px; font-weight: 600; line-height: 1.3; }
+.lawyer-card .badges { margin-bottom: 12px; }
+.lawyer-contacts { display: flex; flex-wrap: wrap; gap: 8px; }
+.lawyer-contact {
+  display: inline-flex; align-items: center; gap: 6px;
+  font-size: 14px; font-weight: 500; color: var(--accent);
+  border: 1px solid var(--border-strong); border-radius: 999px;
+  padding: 6px 12px; background: var(--surface-2);
+}
+.lawyer-contact:hover { border-color: var(--accent); text-decoration: none; }
+.lawyer-contact svg { width: 15px; height: 15px; }
+
 .groups { margin-top: 32px; }
 .group-block { margin-bottom: 26px; }
 .group-block h2 {

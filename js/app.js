@@ -110,6 +110,61 @@
       </section>`;
   }
 
+  // Вхід до розділу «Адвокати» з головної.
+  function lawyersCta() {
+    if (!window.LAWYERS || !window.LAWYERS.length) return "";
+    return `
+      <section class="archive-cta">
+        <div class="archive-cta-text">
+          ${icon("i-scale")}
+          <div>
+            <h2>Адвокати, яким довіряємо</h2>
+            <p>Потрібна допомога юриста у справах мобілізації чи ТЦК — ось перевірені адвокати з прямими контактами.</p>
+          </div>
+        </div>
+        <a class="archive-cta-btn" href="/advokaty">Дивитися адвокатів →</a>
+      </section>`;
+  }
+
+  // ---------- Розділ «Адвокати» ----------
+  function renderLawyers() {
+    const list = window.LAWYERS || [];
+    const cards = list.map((l) => {
+      const badges = [
+        l.specialization ? `<span class="badge neutral">${esc(l.specialization)}</span>` : "",
+        l.region ? `<span class="badge neutral">${icon("i-user")} ${esc(l.region)}</span>` : "",
+        l.fee ? `<span class="badge warn">${esc(l.fee)}</span>` : ""
+      ].join("");
+      const contacts = (l.contacts || []).map((c) =>
+        `<a class="lawyer-contact" href="${esc(c.value)}"${c.value.startsWith("http") ? ' target="_blank" rel="noopener"' : ""}>
+           ${icon(c.type === "phone" ? "i-phone" : "i-link")} ${esc(c.label)}
+         </a>`).join("");
+      const avatar = l.photo
+        ? `<img class="lawyer-photo" src="${esc(l.photo)}" alt="${esc(l.name)}" loading="lazy">`
+        : `<div class="lawyer-photo placeholder">${icon("i-user")}</div>`;
+      return `
+        <article class="lawyer-card">
+          ${avatar}
+          <div class="lawyer-body">
+            <p class="lawyer-role">${esc(l.role || "Адвокат")}</p>
+            <h3 class="lawyer-name">${esc(l.name)}</h3>
+            <div class="badges">${badges}</div>
+            <div class="lawyer-contacts">${contacts}</div>
+          </div>
+        </article>`;
+    }).join("");
+
+    app.className = "layout";
+    app.innerHTML = `
+      <nav class="crumbs"><a href="/">${icon("i-back", "icon")} На головну</a></nav>
+      <div class="hero">
+        <h1>Адвокати, яким довіряємо</h1>
+        <p>Сайт — це навігатор по нормах, а не юридична консультація. Для складних чи спірних ситуацій зверніться до юриста. Ось адвокати з прямими контактами.</p>
+      </div>
+      <div class="lawyer-grid">${cards || "<p class=\"muted\">Список поповнюється.</p>"}</div>
+    `;
+  }
+
   function roadmapHtml() {
     if (!ROADMAP.length) return "";
     return `
@@ -162,6 +217,7 @@
         ${statusChips("home")}
       </div>
       <div class="groups" id="groups">${groupsHtml}</div>
+      ${lawyersCta()}
       ${archiveCta()}
       ${roadmapHtml()}
     `;
@@ -384,6 +440,7 @@
     // а не про документування. Клас на body вимикає їх у CSS.
     document.body.classList.toggle("archive-mode", path.startsWith("/archive"));
     if (path.startsWith("/archive") && window.ARCHIVE) { window.ARCHIVE.render(path); return; }
+    if (path === "/advokaty") { renderLawyers(); return; }
     const m = path.match(/^\/s\/([\w-]+)/);
     if (m) {
       const sit = SITUATIONS.find((s) => s.id === m[1]);
