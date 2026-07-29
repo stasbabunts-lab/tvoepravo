@@ -168,7 +168,7 @@
         ? `<img class="lawyer-photo" src="${esc(l.photo)}" alt="${esc(l.name)}" loading="lazy">`
         : `<div class="lawyer-photo placeholder">${icon("i-user")}</div>`;
       return `
-        <article class="lawyer-card">
+        <article class="lawyer-card" data-id="${esc(l.id)}">
           ${avatar}
           <div class="lawyer-body">
             <p class="lawyer-role">${esc(l.role || "Адвокат")}</p>
@@ -188,6 +188,27 @@
       </div>
       <div class="lawyer-grid">${cards || "<p class=\"muted\">Список поповнюється.</p>"}</div>
     `;
+
+    observeLawyerViews();
+  }
+
+  // Показ картки адвоката — раз на відкриття сторінки, коли її реально побачили.
+  function observeLawyerViews() {
+    const cards = app.querySelectorAll(".lawyer-card[data-id]");
+    if (!cards.length) return;
+    if (!("IntersectionObserver" in window)) {
+      // Фолбек: без спостерігача рахуємо показ одразу.
+      cards.forEach((c) => track("lawyer_view", c.getAttribute("data-id")));
+      return;
+    }
+    const io = new IntersectionObserver((entries, obs) => {
+      entries.forEach((en) => {
+        if (!en.isIntersecting) return;
+        track("lawyer_view", en.target.getAttribute("data-id"));
+        obs.unobserve(en.target); // рахуємо лише перший показ
+      });
+    }, { threshold: 0.5 });
+    cards.forEach((c) => io.observe(c));
   }
 
   function roadmapHtml() {

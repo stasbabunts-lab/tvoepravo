@@ -64,7 +64,8 @@ function tiles(d){
   return `<div class="tiles">
     ${t(tot.pageview||0, "переглядів сторінок")}
     ${t(last7, "переглядів за 7 днів")}
-    ${t(tot.lawyer_call||0, "кліків по телефону адвоката")}
+    ${t(tot.lawyer_view||0, "показів карток адвокатів")}
+    ${t(tot.lawyer_call||0, "кліків по телефону")}
   </div>`;
 }
 function dailyBars(daily){
@@ -82,12 +83,32 @@ function pagesTable(pages){
     pages.map(r=>`<tr><td><code>${esc(r.target||"/")}</code></td><td class="n">${r.total||0}</td></tr>`).join("")
   }</tbody></table>`;
 }
-function lawyersTable(lawyers){
-  return `<h2>Кліки по телефонах адвокатів</h2>` + (lawyers.length
-    ? `<table><thead><tr><th>Адвокат</th><th style="text-align:right">Кліків</th></tr></thead><tbody>${
-        lawyers.map(r=>`<tr><td>${esc(lawyerName(r.target))} <span class="meta">(${esc(r.target)})</span></td><td class="n">${r.total||0}</td></tr>`).join("")
-      }</tbody></table>`
-    : `<p class="msg">Ще жодного кліку.</p>`);
+function lawyersTable(views, calls){
+  // Об'єднуємо показ+дзвінки по id адвоката; сортуємо за показами.
+  const byId = {};
+  (views||[]).forEach(r => { (byId[r.target] = byId[r.target] || {views:0,calls:0}).views = r.total||0; });
+  (calls||[]).forEach(r => { (byId[r.target] = byId[r.target] || {views:0,calls:0}).calls = r.total||0; });
+  // Показуємо і адвокатів із каталогу, у кого ще 0 подій.
+  (window.LAWYERS||[]).forEach(l => { byId[l.id] = byId[l.id] || {views:0,calls:0}; });
+  const rows = Object.keys(byId).map(id => ({ id, ...byId[id] }))
+    .sort((a,b) => b.views - a.views || b.calls - a.calls);
+  if(!rows.length) return `<h2>По кожному адвокату</h2><p class="msg">Ще немає даних.</p>`;
+  return `<h2>По кожному адвокату</h2><table><thead><tr>
+      <th>Адвокат</th>
+      <th style="text-align:right">Показів</th>
+      <th style="text-align:right">Дзвінків</th>
+      <th style="text-align:right">Конверсія</th>
+    </tr></thead><tbody>${
+    rows.map(r=>{
+      const cr = r.views ? Math.round(r.calls/r.views*100) : 0;
+      return `<tr>
+        <td>${esc(lawyerName(r.id))} <span class="meta">(${esc(r.id)})</span></td>
+        <td class="n">${r.views}</td>
+        <td class="n">${r.calls}</td>
+        <td class="n">${r.views ? cr+"%" : "—"}</td>
+      </tr>`;
+    }).join("")
+  }</tbody></table><p class="meta" style="margin-top:8px">Показ — картку адвоката побачили на екрані (раз на відкриття сторінки). Конверсія — дзвінки ÷ покази.</p>`;
 }
 (async function(){
   const el = document.getElementById("content");
@@ -96,7 +117,7 @@ function lawyersTable(lawyers){
     const empty = !(d.totals||[]).length;
     el.innerHTML = empty
       ? `<p class="msg">Даних ще немає — метрики почнуть накопичуватися після відвідувань.</p>`
-      : tiles(d) + dailyBars(d.daily||[]) + pagesTable(d.pages||[]) + lawyersTable(d.lawyers||[]);
+      : tiles(d) + dailyBars(d.daily||[]) + pagesTable(d.pages||[]) + lawyersTable(d.lawyerViews||[], d.lawyerCalls||[]);
   } catch(e){
     el.innerHTML = `<p class="msg">Не вдалося завантажити (${esc(e.message)}). Перевір, що /admin/* і /api/mod/* за Cloudflare Access і D1 налаштовано.</p>`;
   }

@@ -134,7 +134,7 @@ async function handleSubmit(request, env) {
 }
 
 // ---------- Метрики (приватні: лише агреговані лічильники) ----------
-const TRACK_NAMES = new Set(["pageview", "lawyer_call"]);
+const TRACK_NAMES = new Set(["pageview", "lawyer_view", "lawyer_call"]);
 async function handleTrack(request, env) {
   const body = await request.json().catch(() => null);
   if (!body) return json({ error: "bad_json" }, 400);
@@ -196,8 +196,12 @@ async function handleMod(request, env, p) {
     const pages = await env.DB.prepare(
       "SELECT target, SUM(count) AS total FROM metrics WHERE name='pageview' GROUP BY target ORDER BY total DESC LIMIT 50"
     ).all();
-    const lawyers = await env.DB.prepare(
-      "SELECT target, SUM(count) AS total FROM metrics WHERE name='lawyer_call' GROUP BY target ORDER BY total DESC"
+    // По кожному адвокату: показів картки + дзвінків. Об'єднуємо на клієнті по target (id).
+    const lawyerViews = await env.DB.prepare(
+      "SELECT target, SUM(count) AS total FROM metrics WHERE name='lawyer_view' GROUP BY target"
+    ).all();
+    const lawyerCalls = await env.DB.prepare(
+      "SELECT target, SUM(count) AS total FROM metrics WHERE name='lawyer_call' GROUP BY target"
     ).all();
     const daily = await env.DB.prepare(
       "SELECT day, SUM(count) AS total FROM metrics WHERE name='pageview' GROUP BY day ORDER BY day DESC LIMIT 30"
@@ -205,7 +209,8 @@ async function handleMod(request, env, p) {
     return json({
       totals: totals.results || [],
       pages: pages.results || [],
-      lawyers: lawyers.results || [],
+      lawyerViews: lawyerViews.results || [],
+      lawyerCalls: lawyerCalls.results || [],
       daily: daily.results || []
     });
   }
