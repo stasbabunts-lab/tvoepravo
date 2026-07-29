@@ -55,6 +55,19 @@ CREATE TABLE IF NOT EXISTS submissions (
 );
 CREATE INDEX IF NOT EXISTS idx_submissions_ip ON submissions(ip_hash, created_at);
 
+-- Метрики: агреговані денні лічильники. БЕЗ персональних даних —
+-- ні IP, ні cookie, ні user-agent. Лише «скільки разів сталася подія».
+--   name:   'pageview' | 'lawyer_call'
+--   target: шлях сторінки або id адвоката
+CREATE TABLE IF NOT EXISTS metrics (
+  day    TEXT NOT NULL,               -- YYYY-MM-DD (UTC)
+  name   TEXT NOT NULL,
+  target TEXT NOT NULL DEFAULT '',
+  count  INTEGER NOT NULL DEFAULT 0,
+  PRIMARY KEY (day, name, target)
+);
+CREATE INDEX IF NOT EXISTS idx_metrics_name ON metrics(name, day);
+
 -- Журнал дій модерації (ланцюг зберігання).
 CREATE TABLE IF NOT EXISTS audit_log (
   id           TEXT PRIMARY KEY,

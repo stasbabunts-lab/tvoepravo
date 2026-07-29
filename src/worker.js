@@ -23,6 +23,7 @@ export default {
         return json({ error: "backend_not_configured", message: "Приймання свідчень ще не активовано." }, 503);
       }
       if (p === "/api/submit" && request.method === "POST") return await handleSubmit(request, env);
+      if (p === "/api/track" && request.method === "POST") return await handleTrack(request, env);
       if (p === "/api/cases" && request.method === "GET") return await handleCases(env);
       if (p.startsWith("/api/mod/")) return await handleMod(request, env, p);
       if (p.startsWith("/api/")) return json({ error: "not_found" }, 404);
@@ -132,6 +133,23 @@ async function handleSubmit(request, env) {
   return json({ status: "pending", incidentId: incId, suggestedMerge: suggestedMerge || undefined }, 201);
 }
 
+// ---------- Метрики (приватні: лише агреговані лічильники) ----------
+const TRACK_NAMES = new Set(["pageview", "lawyer_call"]);
+async function handleTrack(request, env) {
+  const body = await request.json().catch(() => null);
+  if (!body) return json({ error: "bad_json" }, 400);
+  const name = str(body.name);
+  if (!TRACK_NAMES.has(name)) return json({ error: "bad_name" }, 400);
+  // target — шлях або id; лишаємо лише безпечні символи й обмежуємо довжину.
+  const target = str(body.target).slice(0, 120).replace(/[^\w/:.\-]/g, "");
+  const day = now().slice(0, 10);
+  await env.DB.prepare(
+    `INSERT INTO metrics (day, name, target, count) VALUES (?,?,?,1)
+     ON CONFLICT(day, name, target) DO UPDATE SET count = count + 1`
+  ).bind(day, name, target).run();
+  return json({ ok: true }, 202);
+}
+
 // ---------- Публічні записи ----------
 async function handleCases(env) {
   const { results } = await env.DB.prepare(
@@ -170,6 +188,27 @@ async function handleMod(request, env, p) {
   const actor = request.headers.get("Cf-Access-Authenticated-User-Email");
   const jwt = request.headers.get("Cf-Access-Jwt-Assertion");
   if (!jwt && !env.ALLOW_INSECURE_MOD) return json({ error: "forbidden" }, 403);
+
+  if (p === "/api/mod/stats" && request.method === "GET") {
+    const totals = await env.DB.prepare(
+      "SELECT name, SUM(count) AS total FROM metrics GROUP BY name"
+    ).all();
+    const pages = await env.DB.prepare(
+      "SELECT target, SUM(count) AS total FROM metrics WHERE name='pageview' GROUP BY target ORDER BY total DESC LIMIT 50"
+    ).all();
+    const lawyers = await env.DB.prepare(
+      "SELECT target, SUM(count) AS total FROM metrics WHERE name='lawyer_call' GROUP BY target ORDER BY total DESC"
+    ).all();
+    const daily = await env.DB.prepare(
+      "SELECT day, SUM(count) AS total FROM metrics WHERE name='pageview' GROUP BY day ORDER BY day DESC LIMIT 30"
+    ).all();
+    return json({
+      totals: totals.results || [],
+      pages: pages.results || [],
+      lawyers: lawyers.results || [],
+      daily: daily.results || []
+    });
+  }
 
   if (p === "/api/mod/queue" && request.method === "GET") {
     const { results } = await env.DB.prepare(

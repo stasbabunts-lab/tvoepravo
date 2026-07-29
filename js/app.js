@@ -16,6 +16,31 @@
   const icon = (id, cls = "icon") => `<svg class="${cls}" aria-hidden="true"><use href="#${id}"/></svg>`;
   const esc = (s) => s.replace(/&/g, "&amp;").replace(/</g, "&lt;");
 
+  // Приватна аналітика: шлемо лише подію + ціль, без жодних персональних даних.
+  // sendBeacon не блокує навігацію (важливо для кліку по tel:).
+  function track(name, target) {
+    try {
+      const payload = JSON.stringify({ name, target: target || "" });
+      if (navigator.sendBeacon) {
+        navigator.sendBeacon("/api/track", new Blob([payload], { type: "application/json" }));
+      } else {
+        fetch("/api/track", { method: "POST", headers: { "Content-Type": "application/json" }, body: payload, keepalive: true });
+      }
+    } catch (e) { /* аналітика не має ламати сайт */ }
+  }
+
+  // Динамічні id згортаємо, щоб не плодити рядки в metrics.
+  function normalizePath(p) {
+    return p.replace(/^\/archive\/c\/[\w-]+$/, "/archive/c/:id");
+  }
+  let lastTrackedPath = null;
+  function trackPageview() {
+    const p = normalizePath(currentPath());
+    if (p === lastTrackedPath) return; // не рахуємо повторний render тієї самої сторінки (зміна статусу тощо)
+    lastTrackedPath = p;
+    track("pageview", p);
+  }
+
   const VOL_LABEL = { low: "стабільна норма", medium: "може змінюватися", high: "змінюється часто" };
   const GROUP_ORDER = ["Вулиця", "Транспорт", "У ТЦК", "Повістка", "Дім", "Робота", "ВЛК", "Документи", "Служба", "Кордон", "Наскрізне"];
 
@@ -136,7 +161,7 @@
         l.fee ? `<span class="badge warn">${esc(l.fee)}</span>` : ""
       ].join("");
       const contacts = (l.contacts || []).map((c) =>
-        `<a class="lawyer-contact" href="${esc(c.value)}"${c.value.startsWith("http") ? ' target="_blank" rel="noopener"' : ""}>
+        `<a class="lawyer-contact" href="${esc(c.value)}"${c.value.startsWith("http") ? ' target="_blank" rel="noopener"' : ""}${c.type === "phone" ? ` data-call="${esc(l.id)}"` : ""}>
            ${icon(c.type === "phone" ? "i-phone" : "i-link")} ${esc(c.label)}
          </a>`).join("");
       const avatar = l.photo
@@ -436,6 +461,7 @@
 
   function render() {
     const path = currentPath();
+    trackPageview();
     // В архіві паніка-кнопка і статус не потрібні — вони про особисту ситуацію,
     // а не про документування. Клас на body вимикає їх у CSS.
     document.body.classList.toggle("archive-mode", path.startsWith("/archive"));
@@ -450,6 +476,12 @@
   }
 
   window.addEventListener("popstate", render);
+
+  // Клік по телефону адвоката — фіксуємо як подію (до навігації на tel:).
+  document.addEventListener("click", (e) => {
+    const call = e.target.closest && e.target.closest(".lawyer-contact[data-call]");
+    if (call) track("lawyer_call", call.getAttribute("data-call"));
+  });
 
   // Внутрішні посилання ведемо через роутер, зовнішні й якорі (#…) лишаємо браузеру.
   document.addEventListener("click", (e) => {
