@@ -504,6 +504,19 @@ article > .expert-slot { margin: 0 0 20px; max-width: none; }
 }
 .archive-cta-btn:hover { filter: brightness(1.06); text-decoration: none; }
 
+/* Архів — тяжка правозахисна тема: стриманий вигляд замість «радісного» синього.
+   Нейтральна картка + лівий danger-акцент, вторинна (outline) кнопка. */
+.archive-cta.grave {
+  background: var(--surface); border: 1px solid var(--border);
+  border-left: 3px solid var(--danger); border-radius: 0;
+}
+.archive-cta.grave .archive-cta-text > svg { color: var(--danger); }
+.archive-cta.grave .archive-cta-btn {
+  background: transparent; color: var(--danger);
+  border: 1px solid var(--danger-border);
+}
+.archive-cta.grave .archive-cta-btn:hover { filter: none; background: var(--danger-bg); }
+
 /* Розділ архіву — про документування, не про власну ситуацію:
    ховаємо паніка-кнопку і перемикач статусу. */
 body.archive-mode .panic-fab,

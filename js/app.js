@@ -123,7 +123,7 @@
   // Вхід до архіву з головної: окремий продукт, тому окремим блоком, а не карткою ситуації.
   function archiveCta() {
     return `
-      <section class="archive-cta">
+      <section class="archive-cta grave">
         <div class="archive-cta-text">
           ${icon("i-books")}
           <div>
