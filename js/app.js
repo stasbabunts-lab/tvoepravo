@@ -263,8 +263,8 @@
         ${statusChips("home")}
       </div>
       <div class="groups" id="groups">${groupsHtml}</div>
-      ${lawyersCta()}
       ${archiveCta()}
+      ${lawyersCta()}
       ${roadmapHtml()}
     `;
 
