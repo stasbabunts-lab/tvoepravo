@@ -8,7 +8,7 @@ const SUPPORT_URL = "https://send.monobank.ua/jar/8VZYqEE3Ed";
 
 // Телеграм-канал проєкту. Порожньо = блок і посилання приховані —
 // впиши @handle або повний URL після створення каналу.
-const TELEGRAM_URL = "";
+const TELEGRAM_URL = "@tvoepravo_ua";
 
 const PHONE_LEGAL_AID = { label: "0 800 213 103", tel: "0800213103", name: "Юрконсультація — безоплатно, цілодобово" };
 const PHONE_OMBUDSMAN = { label: "0 800 501 720", tel: "0800501720", name: "Гаряча лінія Омбудсмана" };
