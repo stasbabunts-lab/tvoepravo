@@ -102,7 +102,9 @@ const TILES = [
   ["pageview",    ["перегляд сторінки","перегляди сторінок","переглядів сторінок"]],
   ["lawyer_view", ["показ картки адвоката","покази карток адвокатів","показів карток адвокатів"]],
   ["lawyer_call", ["клік по телефону","кліки по телефону","кліків по телефону"]],
-  ["tg_click",    ["перехід у Telegram","переходи у Telegram","переходів у Telegram"]]
+  ["tg_click",    ["перехід у Telegram","переходи у Telegram","переходів у Telegram"]],
+  ["archive_open",["перехід в архів","переходи в архів","переходів в архів"]],
+  ["lawyers_open",["перехід до адвокатів","переходи до адвокатів","переходів до адвокатів"]]
 ];
 function deltaHtml(cur, prev, d){
   if (!d) return '<div class="delta muted">за весь час спостережень</div>';
@@ -183,7 +185,7 @@ function lawyersTable(views, calls, d){
       </tr>`).join("")
   }</tbody></table><p class="meta">Показ — картку адвоката побачили на екрані (раз на відкриття сторінки). Конверсія — дзвінки ÷ покази.</p>`;
 }
-const TG_SOURCE = { home: "Блок на головній", footer: "Посилання в підвалі" };
+const TG_SOURCE = { home: "Ряд «Ще на сайті» (головна)", footer: "Посилання в підвалі", situation: "Рядок у «Що далі» (ситуація)", about: "Сторінка «Про проєкт»" };
 function telegramTable(rows, d){
   if (!rows.length) return "";
   return `<h2>Переходи в Telegram <span class="sub">— ${d}</span></h2><table><thead><tr>

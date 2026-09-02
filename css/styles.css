@@ -499,46 +499,57 @@ article > .expert-slot { margin: 0 0 20px; max-width: none; }
 .footer-tg svg { width: 16px; height: 16px; }
 
 /* ============ Архів ============ */
-.archive-cta {
-  display: flex; align-items: center; justify-content: space-between; gap: 16px; flex-wrap: wrap;
-  border: 1px solid var(--accent-border); background: var(--accent-bg);
-  border-radius: var(--radius); padding: 18px 20px; margin: 28px 0;
+/* Ряд «Ще на сайті» — фінал головної. Це навігація, а не заклики: однакова
+   вага в усіх трьох, жодної залитої кнопки, жодного кольорового фону. */
+.also { margin: 32px 0 8px; padding-top: 18px; border-top: 1px solid var(--border); }
+.also > h2 {
+  margin: 0 0 12px; font-size: 12px; font-weight: 600;
+  text-transform: uppercase; letter-spacing: .07em; color: var(--muted);
 }
-.archive-cta-text { display: flex; gap: 12px; align-items: flex-start; flex: 1; min-width: 260px; }
-.archive-cta-text > svg { width: 24px; height: 24px; color: var(--accent); flex-shrink: 0; margin-top: 2px; }
-.archive-cta h2 { margin: 0 0 4px; font-size: 17px; font-weight: 600; }
-.archive-cta p { margin: 0; font-size: 14px; color: var(--text-2); }
-.archive-cta-btn {
-  display: inline-flex; align-items: center; white-space: nowrap;
-  background: var(--accent); color: #fff; border-radius: 10px;
-  padding: 11px 18px; font-size: 15px; font-weight: 500;
-}
-.archive-cta-btn:hover { filter: brightness(1.06); text-decoration: none; }
+.also-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 14px; }
+.also-item { display: flex; gap: 10px; align-items: flex-start; }
+.also-item:hover { text-decoration: none; }
+.also-item > svg { width: 18px; height: 18px; color: var(--text-2); flex-shrink: 0; margin-top: 2px; }
+.also-item b { display: block; font-size: 14.5px; font-weight: 500; color: var(--accent); }
+.also-item > span > span { display: block; font-size: 12.5px; color: var(--muted); line-height: 1.4; }
+.also-item:hover b { text-decoration: underline; }
 
-/* Архів — тяжка правозахисна тема: стриманий вигляд замість «радісного» синього.
-   Нейтральна картка + лівий danger-акцент, вторинна (outline) кнопка. */
-.archive-cta.grave {
+/* «Що далі» — кінець сторінки ситуації. Тут людина щойно дізналася, що з нею
+   вчинили незаконно, тому дії стоять за терміновістю: своя справа, потім юрист. */
+.next { margin: 34px 0 8px; padding-top: 18px; border-top: 1px solid var(--border); }
+.next > h2 {
+  margin: 0 0 14px; font-size: 12px; font-weight: 600;
+  text-transform: uppercase; letter-spacing: .07em; color: var(--muted);
+}
+.next-item {
+  display: flex; gap: 13px; align-items: flex-start;
   background: var(--surface); border: 1px solid var(--border);
-  border-left: 3px solid var(--danger); border-radius: 0;
+  border-radius: var(--radius); padding: 15px 17px; margin-bottom: 10px;
 }
-.archive-cta.grave .archive-cta-text > svg { color: var(--danger); }
-.archive-cta.grave .archive-cta-btn {
-  background: transparent; color: var(--danger);
-  border: 1px solid var(--danger-border);
-}
-.archive-cta.grave .archive-cta-btn:hover { filter: none; background: var(--danger-bg); }
+/* Архів — тяжка тема: стриманий вигляд замість «радісного» синього. */
+.next-item.grave { border-radius: 0; border-left: 3px solid var(--danger); }
+.next-item > svg { width: 20px; height: 20px; flex-shrink: 0; margin-top: 2px; color: var(--text-2); }
+.next-item.grave > svg { color: var(--danger); }
+.next-body { flex: 1; min-width: 0; }
+.next-body h3 { margin: 0 0 4px; font-size: 15px; font-weight: 600; }
+.next-body p { margin: 0 0 10px; font-size: 14px; color: var(--text-2); line-height: 1.45; }
+.next-act { font-size: 14px; font-weight: 500; }
+.next-item.grave .next-act { color: var(--danger); }
 
-/* Канал — не термінова дія: найтихіший з трьох блоків на головній,
-   нейтральна картка і вторинна кнопка, щоб не конкурував з архівом. */
-.archive-cta.tg { background: var(--surface); border-color: var(--border); }
-.archive-cta.tg .archive-cta-text > svg { color: var(--text-2); }
-.archive-cta.tg .archive-cta-btn {
-  background: transparent; color: var(--text);
-  border: 1px solid var(--border-strong);
+/* Канал — навмисно не картка й не кнопка: візуально це виноска, а не заклик. */
+.tg-line {
+  display: flex; gap: 12px; align-items: flex-start;
+  padding-top: 14px; margin-top: 14px; border-top: 1px solid var(--border);
 }
-.archive-cta.tg .archive-cta-btn:hover {
-  filter: none; border-color: var(--accent); color: var(--accent);
-}
+.tg-line > svg { width: 18px; height: 18px; color: var(--muted); flex-shrink: 0; margin-top: 3px; }
+.tg-line p { margin: 0; font-size: 14px; color: var(--text-2); line-height: 1.5; }
+.tg-line a { font-weight: 500; white-space: nowrap; }
+
+/* Сторінка «Про проєкт» */
+.about { max-width: 760px; margin: 0 auto; }
+.about h1 { font-size: 26px; margin: 10px 0 12px; }
+.about-lead { font-size: 16px; color: var(--text-2); line-height: 1.6; margin: 0 0 8px; }
+.about-p { font-size: 14.5px; color: var(--text-2); line-height: 1.55; margin: 0; }
 
 /* Розділ архіву — про документування, не про власну ситуацію:
    ховаємо паніка-кнопку і перемикач статусу. */

@@ -134,7 +134,7 @@ async function handleSubmit(request, env) {
 }
 
 // ---------- Метрики (приватні: лише агреговані лічильники) ----------
-const TRACK_NAMES = new Set(["pageview", "lawyer_view", "lawyer_call", "tg_click"]);
+const TRACK_NAMES = new Set(["pageview", "lawyer_view", "lawyer_call", "tg_click", "archive_open", "lawyers_open"]);
 async function handleTrack(request, env) {
   const body = await request.json().catch(() => null);
   if (!body) return json({ error: "bad_json" }, 400);

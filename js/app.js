@@ -120,37 +120,6 @@
     return `<div class="status-alert ${st.level}">${icon(ic)}<div><strong>${stMeta.label}:</strong> ${esc(st.text)}</div></div>`;
   }
 
-  // Вхід до архіву з головної: окремий продукт, тому окремим блоком, а не карткою ситуації.
-  function archiveCta() {
-    return `
-      <section class="archive-cta grave">
-        <div class="archive-cta-text">
-          ${icon("i-books")}
-          <div>
-            <h2>Архів злочинів ТЦК</h2>
-            <p>Зіткнулися з насильством чи незаконним затриманням — задокументуйте. Свідчення зберігаються для скарг до ЄСПЛ і Комітету ООН з прав людини.</p>
-          </div>
-        </div>
-        <a class="archive-cta-btn" href="/archive">Перейти до архіву →</a>
-      </section>`;
-  }
-
-  // Вхід до розділу «Адвокати» з головної.
-  function lawyersCta() {
-    if (!window.LAWYERS || !window.LAWYERS.length) return "";
-    return `
-      <section class="archive-cta">
-        <div class="archive-cta-text">
-          ${icon("i-scale")}
-          <div>
-            <h2>Адвокати, яким довіряємо</h2>
-            <p>Потрібна допомога юриста у справах мобілізації чи ТЦК — ось перевірені адвокати з прямими контактами.</p>
-          </div>
-        </div>
-        <a class="archive-cta-btn" href="/advokaty">Дивитися адвокатів →</a>
-      </section>`;
-  }
-
   // TELEGRAM_URL приймає і "@handle", і повний URL. Порожньо = розділу немає.
   function tgHref() {
     const v = (typeof TELEGRAM_URL === "string" ? TELEGRAM_URL : "").trim();
@@ -158,20 +127,92 @@
     return v.startsWith("@") ? "https://t.me/" + v.slice(1) : v;
   }
 
-  // Канал — найменш термінова дія на головній, тому найтихіший блок і йде останнім.
-  function telegramCta() {
+  // Головна закінчується ситуаціями. Далі — не заклики, а навігація: три двері
+  // однаковою вагою, без залитих кнопок, бо тут людина ще нічого від сайту не отримала.
+  function alsoRow() {
+    const tg = tgHref();
+    const items = [
+      `<a class="also-item" href="/archive" data-ev="archive_open" data-ev-t="home">
+         ${icon("i-books")}
+         <span><b>Архів злочинів ТЦК</b><span>Задокументовані випадки для скарг до ЄСПЛ</span></span>
+       </a>`,
+      (window.LAWYERS && window.LAWYERS.length)
+        ? `<a class="also-item" href="/advokaty" data-ev="lawyers_open" data-ev-t="home">
+             ${icon("i-scale")}
+             <span><b>Адвокати</b><span>Перевірені, з прямими контактами</span></span>
+           </a>` : "",
+      tg ? `<a class="also-item" href="${esc(tg)}" target="_blank" rel="noopener" data-tg="home">
+              ${icon("i-telegram")}
+              <span><b>Канал у Telegram</b><span>Розбори випадків і зміни в нормах</span></span>
+            </a>` : ""
+    ].filter(Boolean).join("");
+    return `
+      <section class="also">
+        <h2>Ще на сайті</h2>
+        <div class="also-row">${items}</div>
+      </section>`;
+  }
+
+  // ---------- «Що далі» в кінці ситуації ----------
+  // Архів доречний там, де є що документувати: фізичний контакт, де можливе
+  // насильство чи незаконне затримання. Довідкові сторінки (правила зйомки)
+  // і «отримали повістку» сюди не входять — інциденту ще немає.
+  const ARCHIVE_GROUPS = ["Вулиця", "Транспорт", "У ТЦК", "Дім", "Кордон", "ВЛК"];
+  const ARCHIVE_IDS = ["masks", "porushennya", "zahyst"]; // наскрізні, але про інцидент
+  const archiveRelevant = (sit) => ARCHIVE_GROUPS.includes(sit.group) || ARCHIVE_IDS.includes(sit.id);
+
+  function nextArchive(sit) {
+    return `
+      <div class="next-item grave">
+        ${icon("i-books")}
+        <div class="next-body">
+          <h3>Це сталося з вами?</h3>
+          <p>Якщо було насильство чи примусова доставка — задокументуйте. Свідчення зберігаються для скарг до ЄСПЛ і Комітету ООН з прав людини.</p>
+          <a class="next-act" href="/archive/add" data-ev="archive_open" data-ev-t="${esc(sit.id)}">Додати випадок в архів →</a>
+        </div>
+      </div>`;
+  }
+
+  function nextLawyers(sit) {
+    if (!window.LAWYERS || !window.LAWYERS.length) return "";
+    return `
+      <div class="next-item">
+        ${icon("i-scale")}
+        <div class="next-body">
+          <h3>Потрібна допомога юриста?</h3>
+          <p>Адвокати, які ведуть справи проти ТЦК, з прямими контактами. Або цілодобова безоплатна лінія БПД: <a href="tel:${PHONE_LEGAL_AID.tel}">${PHONE_LEGAL_AID.label}</a>.</p>
+          <a class="next-act" href="/advokaty" data-ev="lawyers_open" data-ev-t="${esc(sit.id)}">Дивитися адвокатів →</a>
+        </div>
+      </div>`;
+  }
+
+  // Канал — рядком, без картки й кнопки: це виноска, а не заклик. Привід чесний,
+  // тому й формулювання різні: там, де норми справді хиткі, обіцяємо саме зміни.
+  function nextTelegram(sit) {
     const href = tgHref();
     if (!href) return "";
+    const text = sit.volatility === "high"
+      ? "Норми в цій ситуації змінюються часто — сайт оновлюється не щодня. Про кожну зміну пишемо в каналі, там же розбираємо реальні випадки."
+      : "У каналі розбираємо реальні випадки незаконних дій ТЦК — з посиланням на порушену норму. І пишемо, коли змінюються правила.";
     return `
-      <section class="archive-cta tg">
-        <div class="archive-cta-text">
-          ${icon("i-telegram")}
-          <div>
-            <h2>Канал проєкту в Telegram</h2>
-            <p>Розбори реальних випадків незаконних дій ТЦК: яку норму порушено і що робити потерпілому. Плюс зміни в правилах мобілізації — коли вони стаються.</p>
-          </div>
-        </div>
-        <a class="archive-cta-btn" href="${esc(href)}" target="_blank" rel="noopener" data-tg="home">Підписатися →</a>
+      <div class="tg-line">
+        ${icon("i-telegram")}
+        <p>${text} <a href="${esc(href)}" target="_blank" rel="noopener" data-tg="situation">Канал у Telegram →</a></p>
+      </div>`;
+  }
+
+  // Порядок за терміновістю: спершу дія по своїй справі, канал завжди останній.
+  function nextSteps(sit) {
+    const blocks = archiveRelevant(sit)
+      ? nextArchive(sit) + nextLawyers(sit)
+      : nextLawyers(sit);
+    const tg = nextTelegram(sit);
+    if (!blocks && !tg) return "";
+    return `
+      <section class="next">
+        <h2>Що далі</h2>
+        ${blocks}
+        ${tg}
       </section>`;
   }
 
@@ -253,6 +294,39 @@
       </section>`;
   }
 
+  // ---------- «Про проєкт» ----------
+  // План розвитку жив на головній, але вісім заглушок «це ми ще пишемо» —
+  // не те, що потрібно людині в паніці. Для довіри й грантів він потрібен,
+  // тому переїхав на власну сторінку, а з підвалу на неї веде посилання.
+  function renderAbout() {
+    const tg = tgHref();
+    app.className = "layout";
+    app.innerHTML = `
+      <div class="about">
+        <nav class="crumbs"><a href="/">${icon("i-back", "icon")} На головну</a></nav>
+        <h1>Про проєкт</h1>
+        <p class="about-lead">«Твоє право» — навігатор по нормах законодавства України при мобілізації. Ви обираєте свою ситуацію і бачите, що законно, що ні, і на які статті посилатися. Кожен факт має посилання на чинну редакцію норми на zakon.rada.gov.ua.</p>
+
+        <section class="section">
+          <h2>${icon("i-info")} Як це працює</h2>
+          <ul class="rights-list">
+            <li>${icon("i-check")} <span>Норми звіряються з чинними редакціями. База оновлена: <strong>${DB_UPDATED}</strong>.</span></li>
+            <li>${icon("i-check")} <span>Кожна ситуація має мітку, наскільки норма стабільна — від «стабільна норма» до «змінюється часто».</span></li>
+            <li>${icon("i-check")} <span>Сайт не збирає персональних даних: статус зберігається лише у вашому браузері.</span></li>
+            <li>${icon("i-check")} <span>Це навігатор по нормах, а не юридична консультація. Перед важливими рішеннями — до <a href="/advokaty">адвоката</a> або на лінію БПД <a href="tel:${PHONE_LEGAL_AID.tel}">${PHONE_LEGAL_AID.label}</a>.</span></li>
+          </ul>
+        </section>
+
+        ${roadmapHtml()}
+
+        ${tg ? `
+        <section class="section">
+          <h2>${icon("i-telegram")} Канал проєкту</h2>
+          <p class="about-p">Норми змінюються швидше, ніж оновлюється статичний сайт. Про кожну зміну і про реальні випадки незаконних дій ТЦК пишемо в каналі. <a href="${esc(tg)}" target="_blank" rel="noopener" data-tg="about">Канал у Telegram →</a></p>
+        </section>` : ""}
+      </div>`;
+  }
+
   // ---------- Головна ----------
   function renderHome() {
     const groups = {};
@@ -287,10 +361,7 @@
         ${statusChips("home")}
       </div>
       <div class="groups" id="groups">${groupsHtml}</div>
-      ${archiveCta()}
-      ${lawyersCta()}
-      ${telegramCta()}
-      ${roadmapHtml()}
+      ${alsoRow()}
     `;
 
     bindChips(app);
@@ -415,6 +486,8 @@
             }).join("")}
           </div>
         </section>
+
+        ${nextSteps(sit)}
       </article>
     `;
     bindChips(app);
@@ -513,6 +586,7 @@
     document.body.classList.toggle("archive-mode", path.startsWith("/archive"));
     if (path.startsWith("/archive") && window.ARCHIVE) { window.ARCHIVE.render(path); return; }
     if (path === "/advokaty") { renderLawyers(); return; }
+    if (path === "/pro-proekt") { renderAbout(); return; }
     const m = path.match(/^\/s\/([\w-]+)/);
     if (m) {
       const sit = SITUATIONS.find((s) => s.id === m[1]);
@@ -529,6 +603,8 @@
     if (call) track("lawyer_call", call.getAttribute("data-call"));
     const tg = e.target.closest && e.target.closest("a[data-tg]");
     if (tg) track("tg_click", tg.getAttribute("data-tg"));
+    const ev = e.target.closest && e.target.closest("a[data-ev]");
+    if (ev) track(ev.getAttribute("data-ev"), ev.getAttribute("data-ev-t") || "");
   });
 
   // Внутрішні посилання ведемо через роутер, зовнішні й якорі (#…) лишаємо браузеру.
