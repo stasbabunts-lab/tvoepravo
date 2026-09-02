@@ -190,28 +190,43 @@ async function handleMod(request, env, p) {
   if (!jwt && !env.ALLOW_INSECURE_MOD) return json({ error: "forbidden" }, 403);
 
   if (p === "/api/mod/stats" && request.method === "GET") {
-    const totals = await env.DB.prepare(
-      "SELECT name, SUM(count) AS total FROM metrics GROUP BY name"
-    ).all();
-    const pages = await env.DB.prepare(
-      "SELECT target, SUM(count) AS total FROM metrics WHERE name='pageview' GROUP BY target ORDER BY total DESC LIMIT 50"
-    ).all();
-    // По кожному адвокату: показів картки + дзвінків. Об'єднуємо на клієнті по target (id).
-    const lawyerViews = await env.DB.prepare(
-      "SELECT target, SUM(count) AS total FROM metrics WHERE name='lawyer_view' GROUP BY target"
-    ).all();
-    const lawyerCalls = await env.DB.prepare(
-      "SELECT target, SUM(count) AS total FROM metrics WHERE name='lawyer_call' GROUP BY target"
-    ).all();
-    const daily = await env.DB.prepare(
-      "SELECT day, SUM(count) AS total FROM metrics WHERE name='pageview' GROUP BY day ORDER BY day DESC LIMIT 30"
-    ).all();
+    // Вікно аналітики: ?days=7|30|90 або ?days=all. Дні рахуємо в UTC —
+    // metrics.day пишеться в UTC, інакше межі періоду «поїдуть».
+    const raw = new URL(request.url).searchParams.get("days") || "30";
+    const days = raw === "all" ? 0 : ([7, 30, 90].includes(+raw) ? +raw : 30);
+    const today = now().slice(0, 10);
+    const EPOCH = "0000-01-01";
+    const from = days ? shiftDay(today, 1 - days) : EPOCH;
+    // Попереднє вікно тієї ж довжини — щоб показати динаміку, а не голе число.
+    const prevFrom = days ? shiftDay(from, -days) : EPOCH;
+    const prevTo = days ? from : EPOCH;
+    const inWindow = "SELECT target, SUM(count) AS total FROM metrics WHERE name=? AND day >= ? GROUP BY target";
+
+    const res = await env.DB.batch([
+      env.DB.prepare("SELECT name, SUM(count) AS total FROM metrics WHERE day >= ? GROUP BY name").bind(from),
+      env.DB.prepare("SELECT name, SUM(count) AS total FROM metrics WHERE day >= ? AND day < ? GROUP BY name").bind(prevFrom, prevTo),
+      env.DB.prepare("SELECT day, SUM(count) AS total FROM metrics WHERE name='pageview' AND day >= ? GROUP BY day ORDER BY day DESC LIMIT 120").bind(from),
+      env.DB.prepare(inWindow + " ORDER BY total DESC LIMIT 50").bind("pageview", from),
+      env.DB.prepare(inWindow).bind("lawyer_view", from),
+      env.DB.prepare(inWindow).bind("lawyer_call", from),
+      env.DB.prepare(inWindow + " ORDER BY total DESC").bind("tg_click", from),
+      env.DB.prepare("SELECT MIN(day) AS first, MAX(day) AS last FROM metrics"),
+      // Стан архіву — не за період, а «скільки зараз у базі».
+      env.DB.prepare("SELECT status, COUNT(*) AS n FROM incidents GROUP BY status")
+    ]);
+    const r = (i) => res[i].results || [];
+    const range = r(7)[0] || {};
     return json({
-      totals: totals.results || [],
-      pages: pages.results || [],
-      lawyerViews: lawyerViews.results || [],
-      lawyerCalls: lawyerCalls.results || [],
-      daily: daily.results || []
+      period: { days, from: days ? from : (range.first || today), to: today },
+      range: { first: range.first || null, last: range.last || null },
+      totals: r(0),
+      prevTotals: r(1),
+      daily: r(2),
+      pages: r(3),
+      lawyerViews: r(4),
+      lawyerCalls: r(5),
+      telegram: r(6),
+      incidents: r(8)
     });
   }
 
@@ -261,6 +276,12 @@ async function handleMod(request, env, p) {
 }
 
 // ---------- Утиліти ----------
+function shiftDay(day, delta) {
+  const d = new Date(day + "T00:00:00Z");
+  d.setUTCDate(d.getUTCDate() + delta);
+  return d.toISOString().slice(0, 10);
+}
+
 function str(v) { return typeof v === "string" ? v.trim() : (v == null ? "" : String(v)); }
 function arr(v) { return Array.isArray(v) ? v.filter((x) => typeof x === "string") : []; }
 function safeJson(s, def) { try { return JSON.parse(s); } catch { return def; } }

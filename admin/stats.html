@@ -6,30 +6,50 @@
 <title>Метрики — Твоє право</title>
 <meta name="robots" content="noindex, nofollow">
 <style>
-  :root { --bg:#f7f6f2; --surface:#fff; --surface-2:#f0efea; --border:#ddd; --text:#1d1d1b; --muted:#777; --accent:#185fa5; --ok:#0f6e56; --warn:#854f0b; }
-  @media (prefers-color-scheme: dark){ :root{ --bg:#161614; --surface:#1f1f1d; --surface-2:#2a2a27; --border:#333; --text:#f0efeb; --muted:#999; --accent:#85b7eb; } }
+  :root { --bg:#f7f6f2; --surface:#fff; --surface-2:#f0efea; --border:#ddd; --text:#1d1d1b; --muted:#777; --accent:#185fa5; --ok:#0f6e56; --danger:#a32d2d; }
+  @media (prefers-color-scheme: dark){ :root{ --bg:#161614; --surface:#1f1f1d; --surface-2:#2a2a27; --border:#333; --text:#f0efeb; --muted:#999; --accent:#85b7eb; --ok:#9fe1cb; --danger:#e08b8b; } }
   * { box-sizing:border-box; }
   body { margin:0; font-family:-apple-system,"Segoe UI",system-ui,sans-serif; background:var(--bg); color:var(--text); font-size:15px; line-height:1.5; }
   header { padding:14px 20px; border-bottom:1px solid var(--border); display:flex; justify-content:space-between; align-items:center; gap:12px; flex-wrap:wrap; }
   h1 { font-size:18px; margin:0; }
-  h2 { font-size:14px; text-transform:uppercase; letter-spacing:.06em; color:var(--muted); margin:26px 0 10px; }
+  h2 { font-size:14px; text-transform:uppercase; letter-spacing:.06em; color:var(--muted); margin:28px 0 10px; }
+  h2 .sub { text-transform:none; letter-spacing:0; font-weight:400; }
   nav a { color:var(--accent); text-decoration:none; font-size:13px; margin-left:14px; }
   main { max-width:820px; margin:0 auto; padding:16px 20px 80px; }
   .meta { font-size:13px; color:var(--muted); }
-  .tiles { display:grid; grid-template-columns:repeat(auto-fit,minmax(150px,1fr)); gap:12px; margin-top:14px; }
+
+  /* Перемикач періоду — головний елемент сторінки: усі числа нижче залежать від нього. */
+  .period { display:flex; gap:6px; flex-wrap:wrap; margin:14px 0 6px; }
+  .period button {
+    font:inherit; font-size:13.5px; cursor:pointer; padding:6px 13px; border-radius:999px;
+    border:1px solid var(--border); background:var(--surface); color:var(--text);
+  }
+  .period button:hover { border-color:var(--accent); color:var(--accent); }
+  .period button[aria-pressed="true"] { background:var(--accent); border-color:var(--accent); color:#fff; }
+  .range { font-size:13px; color:var(--muted); margin:0 0 4px; }
+
+  .tiles { display:grid; grid-template-columns:repeat(auto-fit,minmax(168px,1fr)); gap:12px; margin-top:14px; }
   .tile { border:1px solid var(--border); border-radius:10px; background:var(--surface); padding:14px 16px; }
-  .tile .num { font-size:26px; font-weight:600; }
+  .tile .num { font-size:26px; font-weight:600; font-variant-numeric:tabular-nums; }
   .tile .lbl { font-size:12.5px; color:var(--muted); margin-top:2px; }
+  .tile .delta { font-size:12px; margin-top:7px; }
+  .delta.up { color:var(--ok); }
+  .delta.down { color:var(--danger); }
+  .delta.muted { color:var(--muted); }
+
+  .chart { display:flex; align-items:flex-end; gap:2px; height:132px; padding:10px 12px 0;
+           background:var(--surface); border:1px solid var(--border); border-radius:10px; }
+  .col { flex:1 1 0; min-width:2px; background:var(--accent); border-radius:2px 2px 0 0; }
+  .col.zero { background:var(--surface-2); }
+  .col.today { opacity:.55; }
+  .axis { display:flex; justify-content:space-between; font-size:12px; color:var(--muted); margin-top:6px; }
+
   table { width:100%; border-collapse:collapse; background:var(--surface); border:1px solid var(--border); border-radius:10px; overflow:hidden; }
   th, td { text-align:left; padding:9px 14px; border-bottom:1px solid var(--border); font-size:14px; }
   th { font-size:12px; text-transform:uppercase; letter-spacing:.05em; color:var(--muted); font-weight:600; }
   tr:last-child td { border-bottom:none; }
-  td.n { text-align:right; font-variant-numeric:tabular-nums; font-weight:600; }
-  .bars { display:flex; flex-direction:column; gap:5px; }
-  .bar-row { display:grid; grid-template-columns:78px 1fr 44px; align-items:center; gap:10px; font-size:12.5px; }
-  .bar-track { background:var(--surface-2); border-radius:4px; height:16px; overflow:hidden; }
-  .bar-fill { height:100%; background:var(--accent); border-radius:4px; }
-  .bar-row .val { text-align:right; font-variant-numeric:tabular-nums; color:var(--muted); }
+  td.n, th.n { text-align:right; }
+  td.n { font-variant-numeric:tabular-nums; font-weight:600; }
   .msg { color:var(--muted); padding:20px 0; }
   code { font-size:12.5px; background:var(--surface-2); padding:1px 5px; border-radius:4px; }
 </style>
@@ -40,52 +60,108 @@
   <nav><a href="/admin/moderation.html">🛡️ Модерація</a></nav>
 </header>
 <main>
-  <p class="meta">Агреговані лічильники подій. Без IP, cookie й персональних даних — лише «скільки разів». Час — UTC.</p>
+  <p class="meta">Агреговані лічильники подій. Без IP, cookie й персональних даних — лише «скільки разів». Доба рахується за UTC.</p>
+  <div class="period" id="period"></div>
+  <p class="range" id="range"></p>
   <div id="content"><p class="msg">Завантаження…</p></div>
 </main>
 <script src="/js/lawyers-data.js"></script>
 <script>
 const esc = (s) => String(s==null?"":s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");
-const lawyerName = (id) => {
-  const l = (window.LAWYERS||[]).find(x => x.id === id);
-  return l ? l.name : id;
-};
-async function api(path){
-  const r = await fetch(path);
-  if(!r.ok) throw new Error("HTTP "+r.status);
-  return r.json();
+
+// --- Період ---
+const PERIODS = [["7","7 днів"],["30","30 днів"],["90","90 днів"],["all","Весь час"]];
+const KEY = "tvoepravo_stats_days";
+let days = localStorage.getItem(KEY) || "30";
+
+// --- Форматування ---
+// Українська множина: 1 перехід / 2 переходи / 5 переходів.
+function plural(n, forms){
+  const m10 = n % 10, m100 = n % 100;
+  if (m10 === 1 && m100 !== 11) return forms[0];
+  if (m10 >= 2 && m10 <= 4 && (m100 < 12 || m100 > 14)) return forms[1];
+  return forms[2];
 }
-function sum(rows){ return rows.reduce((a,r)=>a+(r.total||0),0); }
-function tiles(d){
-  const tot = {};
-  (d.totals||[]).forEach(r => tot[r.name] = r.total||0);
-  const last7 = (d.daily||[]).slice(0,7).reduce((a,r)=>a+(r.total||0),0);
-  const t = (num,lbl) => `<div class="tile"><div class="num">${num}</div><div class="lbl">${lbl}</div></div>`;
-  return `<div class="tiles">
-    ${t(tot.pageview||0, "переглядів сторінок")}
-    ${t(last7, "переглядів за 7 днів")}
-    ${t(tot.lawyer_view||0, "показів карток адвокатів")}
-    ${t(tot.lawyer_call||0, "кліків по телефону")}
-    ${t(tot.tg_click||0, "переходів у Telegram")}
-  </div>`;
+const fmtLong = new Intl.DateTimeFormat("uk-UA", { day:"numeric", month:"long", year:"numeric", timeZone:"UTC" });
+const fmtNoYear = new Intl.DateTimeFormat("uk-UA", { day:"numeric", month:"long", timeZone:"UTC" });
+const fmtShort = new Intl.DateTimeFormat("uk-UA", { day:"2-digit", month:"2-digit", timeZone:"UTC" });
+const asDate = (d) => new Date(d + "T00:00:00Z");
+const fmtDay = (d) => d ? fmtLong.format(asDate(d)) : "—";
+// Рік у межах діапазону пишемо один раз: «4 серпня — 2 вересня 2026 р.»
+function fmtRange(from, to){
+  if (!from || !to) return "—";
+  const f = from.slice(0,4) === to.slice(0,4) ? fmtNoYear.format(asDate(from)) : fmtLong.format(asDate(from));
+  return `${f} — ${fmtLong.format(asDate(to))}`;
 }
-function dailyBars(daily){
-  if(!daily.length) return "";
-  const rows = daily.slice().reverse(); // від старих до нових
-  const max = Math.max(...rows.map(r=>r.total||0), 1);
-  return `<h2>Перегляди по днях</h2><div class="bars">${rows.map(r=>{
-    const pct = Math.round((r.total||0)/max*100);
-    return `<div class="bar-row"><span class="meta">${esc(r.day)}</span><span class="bar-track"><span class="bar-fill" style="width:${pct}%"></span></span><span class="val">${r.total||0}</span></div>`;
+function addDay(d, n){
+  const x = asDate(d); x.setUTCDate(x.getUTCDate() + n); return x.toISOString().slice(0,10);
+}
+
+// --- Плитки ---
+const TILES = [
+  ["pageview",    ["перегляд сторінки","перегляди сторінок","переглядів сторінок"]],
+  ["lawyer_view", ["показ картки адвоката","покази карток адвокатів","показів карток адвокатів"]],
+  ["lawyer_call", ["клік по телефону","кліки по телефону","кліків по телефону"]],
+  ["tg_click",    ["перехід у Telegram","переходи у Telegram","переходів у Telegram"]]
+];
+function deltaHtml(cur, prev, d){
+  if (!d) return '<div class="delta muted">за весь час спостережень</div>';
+  if (!prev && !cur) return '<div class="delta muted">подій не було</div>';
+  if (!prev) return '<div class="delta up">перші за весь час</div>';
+  const pct = Math.round((cur - prev) / prev * 100);
+  if (pct === 0) return `<div class="delta muted">без змін до попередніх ${d} дн.</div>`;
+  return `<div class="delta ${pct>0?"up":"down"}">${pct>0?"↑":"↓"} ${Math.abs(pct)}% до попередніх ${d} дн.</div>`;
+}
+function tiles(data){
+  const tot = {}, prev = {};
+  (data.totals||[]).forEach(r => tot[r.name] = r.total||0);
+  (data.prevTotals||[]).forEach(r => prev[r.name] = r.total||0);
+  const d = data.period.days;
+  return `<div class="tiles">${TILES.map(([name, forms]) => {
+    const n = tot[name]||0;
+    return `<div class="tile">
+      <div class="num">${n}</div>
+      <div class="lbl">${plural(n, forms)}</div>
+      ${deltaHtml(n, prev[name]||0, d)}
+    </div>`;
   }).join("")}</div>`;
 }
-function pagesTable(pages){
-  if(!pages.length) return "";
-  return `<h2>Сторінки</h2><table><thead><tr><th>Шлях</th><th style="text-align:right">Переглядів</th></tr></thead><tbody>${
-    pages.map(r=>`<tr><td><code>${esc(r.target||"/")}</code></td><td class="n">${r.total||0}</td></tr>`).join("")
+
+// --- Графік переглядів по днях ---
+function chart(data){
+  const map = {};
+  (data.daily||[]).forEach(r => map[r.day] = r.total||0);
+  let first = data.period.days ? data.period.from : (data.range.first || data.period.to);
+  // Не малюємо порожні дні до першої зафіксованої події.
+  if (data.range.first && first < data.range.first) first = data.range.first;
+  const last = data.period.to;
+  const list = [];
+  for (let day = first; day <= last && list.length < 120; day = addDay(day, 1)) {
+    list.push([day, map[day]||0]);
+  }
+  if (!list.length) return "";
+  const max = Math.max(...list.map(x => x[1]), 1);
+  const cols = list.map(([day, n]) => {
+    const h = n ? Math.max(3, Math.round(n / max * 100)) : 2;
+    const cls = (n ? "col" : "col zero") + (day === last ? " today" : "");
+    return `<div class="${cls}" style="height:${h}%" title="${day} — ${n}"></div>`;
+  }).join("");
+  return `<h2>Перегляди по днях <span class="sub">— максимум ${max}/день</span></h2>
+    <div class="chart">${cols}</div>
+    <div class="axis"><span>${fmtShort.format(asDate(list[0][0]))}</span><span>${fmtShort.format(asDate(last))}</span></div>
+    <p class="meta">Останній стовпчик блідий — сьогоднішня доба ще не завершилася.</p>`;
+}
+
+// --- Таблиці ---
+function pagesTable(pages, d){
+  if (!pages.length) return "";
+  return `<h2>Сторінки <span class="sub">— ${d}</span></h2><table><thead><tr>
+      <th>Шлях</th><th class="n">Переглядів</th>
+    </tr></thead><tbody>${
+    pages.map(r => `<tr><td><code>${esc(r.target||"/")}</code></td><td class="n">${r.total||0}</td></tr>`).join("")
   }</tbody></table>`;
 }
-function lawyersTable(views, calls){
-  // Об'єднуємо показ+дзвінки по id адвоката; сортуємо за показами.
+function lawyersTable(views, calls, d){
   const byId = {};
   (views||[]).forEach(r => { (byId[r.target] = byId[r.target] || {views:0,calls:0}).views = r.total||0; });
   (calls||[]).forEach(r => { (byId[r.target] = byId[r.target] || {views:0,calls:0}).calls = r.total||0; });
@@ -93,36 +169,86 @@ function lawyersTable(views, calls){
   (window.LAWYERS||[]).forEach(l => { byId[l.id] = byId[l.id] || {views:0,calls:0}; });
   const rows = Object.keys(byId).map(id => ({ id, ...byId[id] }))
     .sort((a,b) => b.views - a.views || b.calls - a.calls);
-  if(!rows.length) return `<h2>По кожному адвокату</h2><p class="msg">Ще немає даних.</p>`;
-  return `<h2>По кожному адвокату</h2><table><thead><tr>
-      <th>Адвокат</th>
-      <th style="text-align:right">Показів</th>
-      <th style="text-align:right">Дзвінків</th>
-      <th style="text-align:right">Конверсія</th>
+  const head = `<h2>По кожному адвокату <span class="sub">— ${d}</span></h2>`;
+  if (!rows.length) return head + `<p class="msg">Ще немає даних.</p>`;
+  const name = (id) => { const l = (window.LAWYERS||[]).find(x => x.id === id); return l ? l.name : id; };
+  return head + `<table><thead><tr>
+      <th>Адвокат</th><th class="n">Показів</th><th class="n">Дзвінків</th><th class="n">Конверсія</th>
     </tr></thead><tbody>${
-    rows.map(r=>{
-      const cr = r.views ? Math.round(r.calls/r.views*100) : 0;
-      return `<tr>
-        <td>${esc(lawyerName(r.id))} <span class="meta">(${esc(r.id)})</span></td>
+    rows.map(r => `<tr>
+        <td>${esc(name(r.id))} <span class="meta">(${esc(r.id)})</span></td>
         <td class="n">${r.views}</td>
         <td class="n">${r.calls}</td>
-        <td class="n">${r.views ? cr+"%" : "—"}</td>
-      </tr>`;
-    }).join("")
-  }</tbody></table><p class="meta" style="margin-top:8px">Показ — картку адвоката побачили на екрані (раз на відкриття сторінки). Конверсія — дзвінки ÷ покази.</p>`;
+        <td class="n">${r.views ? Math.round(r.calls/r.views*100)+"%" : "—"}</td>
+      </tr>`).join("")
+  }</tbody></table><p class="meta">Показ — картку адвоката побачили на екрані (раз на відкриття сторінки). Конверсія — дзвінки ÷ покази.</p>`;
 }
-(async function(){
+const TG_SOURCE = { home: "Блок на головній", footer: "Посилання в підвалі" };
+function telegramTable(rows, d){
+  if (!rows.length) return "";
+  return `<h2>Переходи в Telegram <span class="sub">— ${d}</span></h2><table><thead><tr>
+      <th>Звідки</th><th class="n">Переходів</th>
+    </tr></thead><tbody>${
+    rows.map(r => `<tr><td>${esc(TG_SOURCE[r.target] || r.target || "—")}</td><td class="n">${r.total||0}</td></tr>`).join("")
+  }</tbody></table>`;
+}
+const INC_STATUS = {
+  pending:  "Очікують модерації",
+  verified: "Опубліковані",
+  rejected: "Відхилені",
+  merged:   "Об'єднані з іншими"
+};
+function incidentsTable(rows){
+  const head = `<h2>Архів <span class="sub">— стан бази зараз, не за період</span></h2>`;
+  if (!rows.length) return head + `<p class="msg">У базі ще немає свідчень. <a href="/admin/moderation.html">Модерація</a></p>`;
+  const order = ["pending","verified","rejected","merged"];
+  const sorted = rows.slice().sort((a,b) => order.indexOf(a.status) - order.indexOf(b.status));
+  return head + `<table><thead><tr><th>Статус</th><th class="n">Записів</th></tr></thead><tbody>${
+    sorted.map(r => `<tr><td>${esc(INC_STATUS[r.status] || r.status)}</td><td class="n">${r.n||0}</td></tr>`).join("")
+  }</tbody></table><p class="meta"><a href="/admin/moderation.html">Перейти до черги модерації →</a></p>`;
+}
+
+// --- Складання сторінки ---
+function periodButtons(){
+  document.getElementById("period").innerHTML = PERIODS.map(([id, label]) =>
+    `<button type="button" data-days="${id}" aria-pressed="${id === days}">${label}</button>`).join("");
+}
+function rangeLine(data){
+  const label = data.period.days
+    ? fmtRange(data.period.from, data.period.to)
+    : (data.range.first ? fmtRange(data.range.first, data.range.last) : "даних ще немає");
+  document.getElementById("range").textContent =
+    `Період: ${label}` + (data.period.days ? " (включно з сьогоднішнім неповним днем)" : "");
+}
+async function load(){
   const el = document.getElementById("content");
+  el.innerHTML = `<p class="msg">Завантаження…</p>`;
+  periodButtons();
   try {
-    const d = await api("/api/mod/stats");
-    const empty = !(d.totals||[]).length;
-    el.innerHTML = empty
-      ? `<p class="msg">Даних ще немає — метрики почнуть накопичуватися після відвідувань.</p>`
-      : tiles(d) + dailyBars(d.daily||[]) + pagesTable(d.pages||[]) + lawyersTable(d.lawyerViews||[], d.lawyerCalls||[]);
+    const r = await fetch("/api/mod/stats?days=" + encodeURIComponent(days));
+    if (!r.ok) throw new Error("HTTP " + r.status);
+    const d = await r.json();
+    rangeLine(d);
+    const label = d.period.days ? `за ${d.period.days} дн.` : "за весь час";
+    const nothing = !(d.totals||[]).length;
+    el.innerHTML = (nothing
+        ? `<p class="msg">За цей період подій не було. Спробуйте ширший період.</p>`
+        : tiles(d) + chart(d) + pagesTable(d.pages||[], label)
+          + lawyersTable(d.lawyerViews||[], d.lawyerCalls||[], label)
+          + telegramTable(d.telegram||[], label))
+      + incidentsTable(d.incidents||[]);
   } catch(e){
     el.innerHTML = `<p class="msg">Не вдалося завантажити (${esc(e.message)}). Перевір, що /admin/* і /api/mod/* за Cloudflare Access і D1 налаштовано.</p>`;
   }
-})();
+}
+document.getElementById("period").addEventListener("click", (e) => {
+  const b = e.target.closest("button[data-days]");
+  if (!b) return;
+  days = b.getAttribute("data-days");
+  try { localStorage.setItem(KEY, days); } catch(_) {}
+  load();
+});
+load();
 </script>
 </body>
 </html>
