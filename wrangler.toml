@@ -8,6 +8,11 @@ routes = [
   { pattern = "www.tvoepravo.org.ua/*", zone_name = "tvoepravo.org.ua" },
 ]
 
+# Перед кожним деплоєм перегенеровуємо src/og-data.js із js/data.js —
+# щоб OG-теги сторінок ніколи не розходились із даними сайту.
+[build]
+command = "node scripts/build-og.mjs"
+
 # Статичний сайт + Worker: файли з кореня віддаються як assets,
 # Worker (src/worker.js) обробляє /api/* і робить fallback на assets.
 [assets]

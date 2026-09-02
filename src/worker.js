@@ -8,6 +8,8 @@
 //
 // Усе інше віддається як статичний асет.
 
+import { OG } from "./og-data.js";
+
 const JSON_HEADERS = { "Content-Type": "application/json; charset=utf-8" };
 const uuid = () => crypto.randomUUID();
 const now = () => new Date().toISOString();
@@ -42,11 +44,65 @@ export default {
       // після деплою. Самі ассети (js/css) кешуються як звичайно.
       headers.set("Cache-Control", "no-store");
       headers.delete("ETag");
-      return new Response(index.body, { status: 200, headers });
+      const shell = new Response(index.body, { status: 200, headers });
+      // Усі SPA-шляхи отримують той самий index.html, тому без підстановки
+      // кожне посилання виглядало б у прев'ю як головна. Метадані не мають
+      // права зламати сторінку — при будь-якій помилці віддаємо як є.
+      try {
+        const meta = await ogFor(p, env);
+        if (meta) return withMeta(shell, meta, url);
+      } catch (e) { /* лишаємо дефолтні теги з index.html */ }
+      return shell;
     }
     return asset;
   }
 };
+
+// ---------- OG-теги для конкретної сторінки ----------
+// Канонічний хост фіксований: посилання з www або workers.dev мають
+// вести на основний домен, інакше прев'ю та індексація роз'їдуться.
+const SITE = "https://tvoepravo.org.ua";
+
+function clampText(text, max = 180) {
+  const t = String(text || "").replace(/\s+/g, " ").trim();
+  if (t.length <= max) return t;
+  return t.slice(0, max - 1).replace(/[\s,;:—–-]+\S*$/, "") + "…";
+}
+
+// Сторінки випадків архіву описуємо з бази: саме їх найчастіше кидають
+// у месенджер, і саме там generic-прев'ю виглядає найгірше.
+async function ogFor(path, env) {
+  const m = path.match(/^\/archive\/c\/([\w-]+)$/);
+  if (m && env.DB) {
+    const inc = await env.DB.prepare(
+      "SELECT type, oblast, city, incident_date, summary FROM incidents WHERE id = ? AND status = 'verified'"
+    ).bind(m[1]).first();
+    if (inc) {
+      const place = [inc.city, inc.oblast].filter(Boolean).join(", ");
+      const when = inc.incident_date ? ", " + inc.incident_date : "";
+      return {
+        title: `${inc.type || "Випадок"}${place ? " — " + place : ""}${when} — Архів «Твоє право»`,
+        description: clampText(inc.summary)
+      };
+    }
+  }
+  return OG[path] || null;
+}
+
+function withMeta(response, meta, url) {
+  const canonical = SITE + url.pathname;
+  const content = (value) => ({ element(el) { el.setAttribute("content", value); } });
+  return new HTMLRewriter()
+    .on("title", { element(el) { el.setInnerContent(meta.title); } })
+    .on('meta[name="description"]', content(meta.description))
+    .on('meta[property="og:title"]', content(meta.title))
+    .on('meta[property="og:description"]', content(meta.description))
+    .on('meta[property="og:url"]', content(canonical))
+    .on('meta[name="twitter:title"]', content(meta.title))
+    .on('meta[name="twitter:description"]', content(meta.description))
+    .on('link[rel="canonical"]', { element(el) { el.setAttribute("href", canonical); } })
+    .transform(response);
+}
 
 // ---------- Прийом свідчення ----------
 async function handleSubmit(request, env) {
