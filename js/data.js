@@ -6,6 +6,10 @@ const DB_UPDATED = "2026-07-06";
 // Підтримка проєкту. Порожньо = кнопка прихована. Встав сюди посилання Buy Me a Coffee / банку.
 const SUPPORT_URL = "https://send.monobank.ua/jar/8VZYqEE3Ed";
 
+// Телеграм-канал проєкту. Порожньо = блок і посилання приховані —
+// впиши @handle або повний URL після створення каналу.
+const TELEGRAM_URL = "";
+
 const PHONE_LEGAL_AID = { label: "0 800 213 103", tel: "0800213103", name: "Юрконсультація — безоплатно, цілодобово" };
 const PHONE_OMBUDSMAN = { label: "0 800 501 720", tel: "0800501720", name: "Гаряча лінія Омбудсмана" };
 

@@ -151,6 +151,30 @@
       </section>`;
   }
 
+  // TELEGRAM_URL приймає і "@handle", і повний URL. Порожньо = розділу немає.
+  function tgHref() {
+    const v = (typeof TELEGRAM_URL === "string" ? TELEGRAM_URL : "").trim();
+    if (!v) return "";
+    return v.startsWith("@") ? "https://t.me/" + v.slice(1) : v;
+  }
+
+  // Канал — найменш термінова дія на головній, тому найтихіший блок і йде останнім.
+  function telegramCta() {
+    const href = tgHref();
+    if (!href) return "";
+    return `
+      <section class="archive-cta tg">
+        <div class="archive-cta-text">
+          ${icon("i-telegram")}
+          <div>
+            <h2>Канал проєкту в Telegram</h2>
+            <p>Розбори реальних випадків незаконних дій ТЦК: яку норму порушено і що робити потерпілому. Плюс зміни в правилах мобілізації — коли вони стаються.</p>
+          </div>
+        </div>
+        <a class="archive-cta-btn" href="${esc(href)}" target="_blank" rel="noopener" data-tg="home">Підписатися →</a>
+      </section>`;
+  }
+
   // ---------- Розділ «Адвокати» ----------
   function renderLawyers() {
     const list = window.LAWYERS || [];
@@ -265,6 +289,7 @@
       <div class="groups" id="groups">${groupsHtml}</div>
       ${archiveCta()}
       ${lawyersCta()}
+      ${telegramCta()}
       ${roadmapHtml()}
     `;
 
@@ -502,6 +527,8 @@
   document.addEventListener("click", (e) => {
     const call = e.target.closest && e.target.closest(".lawyer-contact[data-call]");
     if (call) track("lawyer_call", call.getAttribute("data-call"));
+    const tg = e.target.closest && e.target.closest("a[data-tg]");
+    if (tg) track("tg_click", tg.getAttribute("data-tg"));
   });
 
   // Внутрішні посилання ведемо через роутер, зовнішні й якорі (#…) лишаємо браузеру.
@@ -522,6 +549,13 @@
   if (supportLink && typeof SUPPORT_URL === "string" && SUPPORT_URL) {
     supportLink.href = SUPPORT_URL;
     supportLink.hidden = false;
+  }
+
+  // Посилання на канал у підвалі — видно на всіх сторінках, зокрема в архіві.
+  const tgLink = document.getElementById("tg-link");
+  if (tgLink && tgHref()) {
+    tgLink.href = tgHref();
+    tgLink.hidden = false;
   }
 
   // Сумісність зі старими посиланнями виду /#/archive — переводимо на /archive.

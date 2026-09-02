@@ -487,6 +487,17 @@ article > .expert-slot { margin: 0 0 20px; max-width: none; }
 .support-btn:hover { border-color: var(--accent); color: var(--accent); text-decoration: none; }
 .support-btn[hidden] { display: none; }
 
+/* Посилання на канал — та сама пігулка, що й «Підтримати», поруч у підвалі. */
+.footer-tg {
+  display: inline-flex; align-items: center; gap: 7px; margin-right: 8px;
+  border: 1px solid var(--border-strong); border-radius: 999px;
+  padding: 8px 16px; font-size: 14px; font-weight: 500;
+  color: var(--text); background: var(--surface);
+}
+.footer-tg:hover { border-color: var(--accent); color: var(--accent); text-decoration: none; }
+.footer-tg[hidden] { display: none; }
+.footer-tg svg { width: 16px; height: 16px; }
+
 /* ============ Архів ============ */
 .archive-cta {
   display: flex; align-items: center; justify-content: space-between; gap: 16px; flex-wrap: wrap;
@@ -516,6 +527,18 @@ article > .expert-slot { margin: 0 0 20px; max-width: none; }
   border: 1px solid var(--danger-border);
 }
 .archive-cta.grave .archive-cta-btn:hover { filter: none; background: var(--danger-bg); }
+
+/* Канал — не термінова дія: найтихіший з трьох блоків на головній,
+   нейтральна картка і вторинна кнопка, щоб не конкурував з архівом. */
+.archive-cta.tg { background: var(--surface); border-color: var(--border); }
+.archive-cta.tg .archive-cta-text > svg { color: var(--text-2); }
+.archive-cta.tg .archive-cta-btn {
+  background: transparent; color: var(--text);
+  border: 1px solid var(--border-strong);
+}
+.archive-cta.tg .archive-cta-btn:hover {
+  filter: none; border-color: var(--accent); color: var(--accent);
+}
 
 /* Розділ архіву — про документування, не про власну ситуацію:
    ховаємо паніка-кнопку і перемикач статусу. */
