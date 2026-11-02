@@ -13,13 +13,17 @@ import fs from "node:fs";
 import vm from "node:vm";
 
 const SRC = "js/data.js";
+const ARC_SRC = "js/archive-data.js";
 const OUT = "src/og-data.js";
 
-// data.js — звичайний скрипт для браузера (не модуль), тому виконуємо його
+// data.js та archive-data.js — звичайні скрипти для браузера (не модулі), тому виконуємо їх
 // в пісочниці й забираємо потрібні const через globalThis.
 const ctx = { window: {} };
 vm.createContext(ctx);
 vm.runInContext(fs.readFileSync(SRC, "utf8") + ";globalThis.__S = SITUATIONS;", ctx);
+if (fs.existsSync(ARC_SRC)) {
+  vm.runInContext(fs.readFileSync(ARC_SRC, "utf8") + ";globalThis.__C = ARC_CASES;", ctx);
+}
 
 // Опис у прев'ю обрізається приблизно на 200 символах — ріжемо самі,
 // по межі слова, щоб не отримати обрубок посеред слова.
@@ -53,6 +57,14 @@ for (const s of ctx.__S) {
   pages["/s/" + s.id] = {
     title: s.title + " — Твоє право",
     description: clamp(s.intro || s.stubNote || "Що законно, а що ні у цій ситуації — з посиланнями на норми.")
+  };
+}
+
+for (const c of (ctx.__C || [])) {
+  const place = [c.city, c.oblast].filter(Boolean).join(", ");
+  pages["/archive/c/" + c.id] = {
+    title: clamp(`${c.title}${place ? " — " + place : ""}`, 90) + " — Архів «Твоє право»",
+    description: clamp(c.summary)
   };
 }
 

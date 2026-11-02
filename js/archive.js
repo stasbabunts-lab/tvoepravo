@@ -52,6 +52,8 @@
       platform = "instagram"; id = (path.match(/\/(reel|p)\/([^/]+)/) || [])[2] || path;
     } else if (host === "facebook.com" || host === "fb.watch") {
       platform = "facebook"; id = q.get("v") || path;
+    } else if (host === "drive.google.com") {
+      platform = "google-drive"; id = (path.match(/\/file\/d\/([^\/]+)/) || [])[1] || q.get("id") || path;
     } else {
       platform = "web"; id = path + (q.toString() ? "" : ""); // без трекінгових хвостів
     }
@@ -207,11 +209,46 @@
     const cat = catById(c.category);
     const evHtml = (c.evidence || []).map((e, i) => `
       <div class="arc-ev">
-        <div class="arc-ev-head">${icon("i-video")} Свідчення ${i + 1} ${e.platform ? `<span class="arc-badge neutral">${esc(e.platform)}</span>` : ""}</div>
-        ${e.url ? `<p><a class="norm-ref" href="${esc(e.url)}" target="_blank" rel="noopener nofollow">${icon("i-external")} Першоджерело</a>${e.snapshotUrl ? ` · <a class="norm-ref" href="${esc(e.snapshotUrl)}" target="_blank" rel="noopener">архівна копія</a>` : ""}</p>` : `<p class="arc-muted">${esc(e.note || "")}</p>`}
+        <div class="arc-ev-head">${icon("i-video")} ${esc(e.title || `Свідчення ${i + 1}`)} ${e.platform ? `<span class="arc-badge neutral">${esc(e.platform)}</span>` : ""}</div>
+        ${e.note ? `<p style="margin:8px 0 10px;font-size:0.95rem;line-height:1.5">${esc(e.note)}</p>` : ""}
+        ${e.url ? `<p><a class="norm-ref" href="${esc(e.url)}" target="_blank" rel="noopener nofollow">${icon("i-external")} ${e.platform === "google-drive" ? "Відкрити відеозапис (Google Диск)" : "Першоджерело"}</a>${e.snapshotUrl ? ` · <a class="norm-ref" href="${esc(e.snapshotUrl)}" target="_blank" rel="noopener">архівна копія</a>` : ""}</p>` : `<p class="arc-muted">${esc(e.note || "")}</p>`}
         ${e.hash && e.hash !== "—" ? `<p class="arc-hash" title="SHA-256 канонічного посилання">${icon("i-shield")} ${esc(e.hash.slice(0, 24))}…</p>` : ""}
         ${e.capturedAt ? `<p class="arc-muted">Зафіксовано: ${esc(e.capturedAt)}</p>` : ""}
       </div>`).join("");
+
+    const summaryHtml = (c.summary || "").split(/\n\n+/).map((p) => `<p class="intro" style="margin-bottom:12px;line-height:1.6">${esc(p)}</p>`).join("");
+
+    const legalHtml = (c.legalViolations && c.legalViolations.length) ? `
+      <section class="section">
+        <h2>${icon("i-scale")} Порушені норми законодавства</h2>
+        <div class="arc-legal-list" style="display:flex;flex-direction:column;gap:12px;margin-top:12px;">
+          ${c.legalViolations.map((v) => `
+            <div class="status-alert warn" style="display:flex;flex-direction:column;gap:6px;margin:0;">
+              <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+                <span class="badge warn" style="font-weight:600">${esc(v.norm)}</span>
+                <strong style="font-size:1.02rem">${esc(v.title)}</strong>
+              </div>
+              <p style="margin:0;font-size:0.95rem;line-height:1.5">${esc(v.desc)}</p>
+            </div>
+          `).join("")}
+        </div>
+      </section>` : "";
+
+    const respHtml = (c.responsibility && c.responsibility.length) ? `
+      <section class="section">
+        <h2>${icon("i-shield")} Хто має нести відповідальність</h2>
+        <div class="arc-resp-list" style="display:flex;flex-direction:column;gap:12px;margin-top:12px;">
+          ${c.responsibility.map((r) => `
+            <div class="status-alert info" style="display:flex;flex-direction:column;gap:6px;margin:0;">
+              <div style="display:flex;align-items:center;gap:6px;">
+                ${icon("i-user")}
+                <strong style="font-size:1.02rem">${esc(r.who)}</strong>
+              </div>
+              <p style="margin:0;font-size:0.95rem;line-height:1.5">${esc(r.basis)}</p>
+            </div>
+          `).join("")}
+        </div>
+      </section>` : "";
 
     return `
       <nav class="crumbs"><a href="/archive">${icon("i-back", "icon")} До архіву</a> · ${esc(cat?.label || "")}</nav>
@@ -224,7 +261,7 @@
         </div>
       </header>
 
-      <p class="intro">${esc(c.summary)}</p>
+      ${summaryHtml}
 
       <section class="section">
         <h2>${icon("i-user")} Хто фігурує</h2>
@@ -237,12 +274,16 @@
         <p style="margin-top:14px"><a class="arc-btn primary" href="/archive/add?to=${esc(c.id)}">${icon("i-siren")} Я теж свідок — додати своє свідчення</a></p>
       </section>
 
+      ${legalHtml}
+
+      ${respHtml}
+
       <section class="section">
         <h2>${icon("i-scale")} Куди може піти</h2>
         <p>${(c.courts || []).map((cid) => `<span class="badge neutral">${esc(courtById(cid)?.name || cid)}</span>`).join(" ") || "—"}</p>
       </section>
 
-      <div class="status-alert info">${icon("i-info")}<div>${esc(ARC_DISCLAIMERS.presumption)}</div></div>
+      <div class="status-alert info" style="margin-top:20px">${icon("i-info")}<div>${esc(ARC_DISCLAIMERS.presumption)}</div></div>
     `;
   }
 
